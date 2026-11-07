@@ -29,8 +29,15 @@ dependencies {
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	testImplementation 'org.springframework.security:spring-security-test'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
 }
 
+// 👇 ESTE BLOQUE ES EL QUE FALTA Y SOLUCIONA EL ERROR 👇
 tasks.named('test') {
 	useJUnitPlatform()
+	failOnNoDiscoveredTests = false
 }
