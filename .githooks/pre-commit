@@ -1,0 +1,36 @@
+#!/bin/sh
+# Evita mezclar código de backend y frontend en la misma rama.
+#
+#  - En 'backend' no se permite agregar/modificar nada dentro de 'frontend/'.
+#  - En 'frontend' no se permite agregar/modificar nada dentro de 'backend/'.
+#  - En 'main' no se hacen commits directos (solo merges de Pull Request).
+
+current=$(git symbolic-ref --short -q HEAD)
+[ -z "$current" ] && exit 0
+
+if [ "$current" = "main" ]; then
+  echo "" >&2
+  echo "  COMMIT BLOQUEADO: no se hacen commits directos en 'main'." >&2
+  echo "  Trabaja en 'backend' o 'frontend' y abre un Pull Request." >&2
+  echo "  (Emergencia del owner: git commit --no-verify)" >&2
+  echo "" >&2
+  exit 1
+fi
+
+files=$(git diff --cached --name-only --diff-filter=ACMR)
+blocked=0
+
+for f in $files; do
+  case "$current:$f" in
+    backend:frontend/*)
+      echo "COMMIT BLOQUEADO: estás en 'backend' y '$f' pertenece al proyecto frontend." >&2
+      blocked=1
+      ;;
+    frontend:backend/*)
+      echo "COMMIT BLOQUEADO: estás en 'frontend' y '$f' pertenece al proyecto backend." >&2
+      blocked=1
+      ;;
+  esac
+done
+
+exit $blocked

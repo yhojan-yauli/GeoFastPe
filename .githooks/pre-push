@@ -1,0 +1,49 @@
+#!/bin/sh
+# Reglas de ramas del repo GeoFastPe
+#
+#  - Nadie hace push a 'main' (se actualiza solo con Pull Requests).
+#  - Solo puedes pushear la rama en la que estás parado
+#    (backend no puede subir a frontend y viceversa).
+#  - No se permite borrar ramas remotas.
+
+current=$(git symbolic-ref --short -q HEAD)
+blocked=0
+
+if [ -z "$current" ]; then
+  echo "PUSH BLOQUEADO: HEAD desacoplado (detached). Cambia a una rama de trabajo." >&2
+  exit 1
+fi
+
+while read local_ref local_sha remote_ref remote_sha; do
+  # Borrado de una rama remota
+  if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+    echo "PUSH BLOQUEADO: no se permite borrar la rama remota '$remote_ref'." >&2
+    blocked=1
+    continue
+  fi
+
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/master)
+      echo "" >&2
+      echo "  PUSH BLOQUEADO: '$remote_ref' está protegida." >&2
+      echo "  Integra tus cambios con un Pull Request hacia 'main' (solo el owner lo mergea)." >&2
+      echo "" >&2
+      blocked=1
+      ;;
+    refs/tags/*)
+      : # los tags se permiten
+      ;;
+    refs/heads/"$current")
+      : # correcto: pushear la rama actual a su equivalente remoto
+      ;;
+    *)
+      echo "" >&2
+      echo "  PUSH BLOQUEADO: estás en la rama '$current' y solo puedes pushear a" >&2
+      echo "  'refs/heads/$current', pero intentaste pushear a '$remote_ref'." >&2
+      echo "" >&2
+      blocked=1
+      ;;
+  esac
+done
+
+exit $blocked
