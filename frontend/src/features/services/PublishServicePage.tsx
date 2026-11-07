@@ -105,7 +105,9 @@ export default function PublishServicePage({
       imagen:
         imagen ||
         "https://placehold.co/400x300?text=GeoFastPe",
-      descripcion: descripcion.trim()
+      descripcion: descripcion.trim(),
+      lat: location.lat,
+      lng: location.lng,
     };
 
     onPublish?.(nuevoServicio);

@@ -17,6 +17,8 @@ export interface Servicio {
   imagen: string;
   descripcion?: string;
   precio?: number;
+  lat?: number;
+  lng?: number;
 }
 
 interface ServicesPageProps {

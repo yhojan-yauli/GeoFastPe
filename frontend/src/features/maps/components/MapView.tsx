@@ -57,18 +57,45 @@ export default function MapView({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-        const map = new maplibregl.Map({
-        container: containerRef.current,
-        style: "https://demotiles.maplibre.org/style.json",
-        center: [-77.042793, -12.046374],
-        zoom: 12,
-        minZoom: 3,
-        maxZoom: 19,
-        attributionControl: {},
-        renderWorldCopies: false,
-        pitch: 0,
-        bearing: 0,
-        });
+
+const map = new maplibregl.Map({
+  container: containerRef.current,
+
+  // Mapa con calles y edificios de OpenStreetMap
+  style: {
+    version: 8,
+    sources: {
+      "osm-tiles": {
+        type: "raster",
+        tiles: [
+          "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        ],
+        tileSize: 256,
+        attribution: "© OpenStreetMap contributors",
+        maxzoom: 19,
+      },
+    },
+    layers: [
+      {
+        id: "osm-layer",
+        type: "raster",
+        source: "osm-tiles",
+        minzoom: 0,
+        maxzoom: 22,
+      },
+    ],
+  },
+
+  // Ubicación inicial: Arequipa
+  center: [-71.537451, -16.409047],
+  zoom: 14,
+  minZoom: 3,
+  maxZoom: 19,
+  renderWorldCopies: false,
+  pitch: 0,
+  bearing: 0,
+});
+
 
     mapRef.current = map;
 
