@@ -35,3 +35,10 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### GeoFastPe ###
+data/
+*.log
+.env
+**/firebase-service-account.json
+**/service-account*.json
