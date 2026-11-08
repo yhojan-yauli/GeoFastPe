@@ -23,7 +23,6 @@ import {
 
 const menuItems = [
   { label: 'Inicio', icon: House, path: '/', category: 'Todos' },
-  { label: 'Mapa Vecinal', icon: MapPinned, path: '/mapa', category: 'Todos' },
   { label: 'Servicios', icon: BriefcaseBusiness, path: '/servicios', category: 'Servicios' },
   { label: 'Ventas', icon: ShoppingCart, path: '/ventas', category: 'Ventas' },
   { label: 'Solidaridad', icon: HeartHandshake, path: '/solidaridad', category: 'Solidaridad' },
