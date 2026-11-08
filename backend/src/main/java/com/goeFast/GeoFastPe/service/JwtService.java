@@ -35,14 +35,20 @@ public class JwtService {
         Instant now = Instant.now();
         Instant expiration = now.plusMillis(properties.expirationMs());
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(String.valueOf(user.getId()))
-                .claim("phone", user.getPhone())
                 .claim("role", user.getRole().name())
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(expiration))
-                .signWith(signingKey)
-                .compact();
+                .expiration(Date.from(expiration));
+
+        if (user.getEmail() != null) {
+            builder.claim("email", user.getEmail());
+        }
+        if (user.getPhone() != null) {
+            builder.claim("phone", user.getPhone());
+        }
+
+        return builder.signWith(signingKey).compact();
     }
 
     public Jws<Claims> parse(String token) {

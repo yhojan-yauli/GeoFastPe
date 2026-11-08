@@ -7,7 +7,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -21,30 +20,35 @@ import java.time.Instant;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(
-        name = "users",
-        indexes = {
-                @Index(name = "idx_users_phone", columnList = "phone", unique = true)
-        }
-)
+@Table(name = "users")
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 20)
+    @Column(name = "full_name", nullable = false, length = 120)
+    private String fullName;
+
+    /**
+     * Correo electronico. Es opcional, pero el registro exige correo o telefono.
+     */
+    @Column(unique = true, length = 150)
+    private String email;
+
+    /**
+     * Telefono normalizado en formato E.164 (ejemplo: +51987654321).
+     * Es opcional, pero el registro exige correo o telefono.
+     */
+    @Column(unique = true, length = 20)
     private String phone;
 
-    @Column(name = "full_name", length = 120)
-    private String fullName;
+    @Column(name = "password_hash", nullable = false, length = 100)
+    private String passwordHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role = Role.USER;
-
-    @Column(name = "phone_verified", nullable = false)
-    private boolean phoneVerified = false;
 
     @Column(nullable = false)
     private boolean active = true;

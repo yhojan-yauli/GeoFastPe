@@ -7,4 +7,10 @@ public record JwtProperties(
         String secret,
         long expirationMs
 ) {
+
+    public JwtProperties {
+        if (expirationMs <= 0) {
+            throw new IllegalArgumentException("app.jwt.expiration-ms debe ser mayor que 0");
+        }
+    }
 }

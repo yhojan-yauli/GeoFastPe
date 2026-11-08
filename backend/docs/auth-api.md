@@ -2,72 +2,61 @@
 
 Base URL: `http://localhost:8080`
 
-Autenticacion con **OTP por SMS**. El registro crea la cuenta y el login vuelve a pedir un codigo.
+Swagger UI: `http://localhost:8080/swagger-ui.html` | OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 
-## Proveedores de SMS
+Autenticacion con **correo o telefono + contrasena** y **JWT**.
+El registro crea la cuenta y devuelve un token listo para usar.
 
-Configura con la variable `OTP_PROVIDER`:
+## Resumen rapido
 
-| Valor | Descripcion |
-|---|---|
-| `log` (default) | No envia SMS; imprime el codigo en la consola. Ideal para desarrollo. |
-| `textbelt` | SMS real con la key gratuita `textbelt` (1 envio por dia por IP). |
-| `twilio` | SMS real con credito de prueba de Twilio (solo numeros verificados en trial). |
+| Metodo | Ruta | Que hace | Requiere token |
+|---|---|---|---|
+| `POST` | `/api/v1/auth/register` | Crea la cuenta y devuelve JWT | No |
+| `POST` | `/api/v1/auth/login` | Inicia sesion y devuelve JWT | No |
+| `GET` | `/api/v1/auth/me` | Devuelve el usuario autenticado | Si |
 
-En desarrollo, con `app.otp.expose-code=true` la respuesta incluye `devCode` para poder probar sin SMS.
+## Reglas del registro
 
-### Configuracion Twilio (trial gratuito)
+- `fullName`: obligatorio, maximo 120 caracteres.
+- `email`: opcional, pero debe ser valido y unico.
+- `phone`: opcional, pero debe ser valido y unico.
+- **Debes enviar al menos uno de los dos: `email` o `phone`.**
+- `password`: obligatorio, entre 8 y 64 caracteres.
+- El telefono se normaliza a formato E.164: `987654321` -> `+51987654321`.
+- El correo se guarda en minusculas.
 
-```powershell
-$env:OTP_PROVIDER="twilio"
-$env:TWILIO_ACCOUNT_SID="AC..."
-$env:TWILIO_AUTH_TOKEN="..."
-$env:TWILIO_FROM_NUMBER="+1..."
-$env:OTP_EXPOSE_CODE="false"
-.\gradlew.bat bootRun
-```
+## POST /api/v1/auth/register
 
-En la consola de Twilio (trial) debes **verificar** cada numero destino antes de enviar.
-
-## Flujo de registro
-
-```
-1. POST /api/v1/auth/register/request-otp   { "phone": "987654321" }
-2. POST /api/v1/auth/register/verify        { "phone": "987654321", "code": "123456", "fullName": "Juan Perez" }
-3. Usar el token devuelto en  Authorization: Bearer <token>
-```
-
-## Flujo de login
-
-```
-1. POST /api/v1/auth/login/request-otp      { "phone": "987654321" }
-2. POST /api/v1/auth/login/verify           { "phone": "987654321", "code": "123456" }
-```
-
-El telefono se normaliza a E.164: `987654321` -> `+51987654321`.
-
----
-
-## POST /api/v1/auth/register/request-otp
-
-**200 OK**
+### Solo con correo
 
 ```json
 {
-  "message": "Codigo enviado al ****4321",
-  "expiresInSeconds": 300,
-  "devCode": "123456"
+  "fullName": "Juan Perez",
+  "email": "juan@correo.com",
+  "password": "miClave123"
 }
 ```
 
-`devCode` solo aparece si `app.otp.expose-code=true`.
+### Solo con telefono
 
-Errores:
-- `409 PHONE_ALREADY_REGISTERED` - el numero ya tiene cuenta.
-- `429 OTP_COOLDOWN` - esperar antes de pedir otro codigo.
-- `400 VALIDATION_ERROR` / `INVALID_ARGUMENT` - telefono invalido.
+```json
+{
+  "fullName": "Juan Perez",
+  "phone": "987654321",
+  "password": "miClave123"
+}
+```
 
-## POST /api/v1/auth/register/verify
+### Con ambos
+
+```json
+{
+  "fullName": "Juan Perez",
+  "email": "juan@correo.com",
+  "phone": "987654321",
+  "password": "miClave123"
+}
+```
 
 **201 Created**
 
@@ -78,94 +67,121 @@ Errores:
   "expiresInSeconds": 86400,
   "user": {
     "id": 1,
-    "phone": "+51987654321",
     "fullName": "Juan Perez",
+    "email": "juan@correo.com",
+    "phone": "+51987654321",
     "role": "USER",
-    "phoneVerified": true,
     "active": true,
-    "createdAt": "2026-11-07T15:00:00Z",
-    "lastLoginAt": "2026-11-07T15:00:00Z"
+    "createdAt": "2026-11-08T05:00:00Z",
+    "lastLoginAt": "2026-11-08T05:00:00Z"
   }
 }
 ```
 
+La respuesta **nunca** incluye la contrasena ni su hash.
+
 Errores:
-- `400 OTP_INVALID` - codigo incorrecto (incluye intentos restantes).
-- `400 OTP_EXPIRED` - codigo vencido.
-- `400 OTP_NOT_FOUND` - no hay codigo vigente.
-- `429 OTP_TOO_MANY_ATTEMPTS` - supero el maximo de intentos.
 
-## POST /api/v1/auth/login/request-otp
+- `400 IDENTIFIER_REQUIRED` - no enviaste correo ni telefono.
+- `400 VALIDATION_ERROR` - datos invalidos (correo, telefono o contrasena).
+- `400 INVALID_ARGUMENT` - telefono con formato invalido.
+- `409 EMAIL_ALREADY_REGISTERED` - el correo ya tiene cuenta.
+- `409 PHONE_ALREADY_REGISTERED` - el telefono ya tiene cuenta.
 
-**200 OK**
+## POST /api/v1/auth/login
+
+Envia **correo o telefono** en el campo `identifier`.
+
+### Con correo
 
 ```json
 {
-  "message": "Codigo enviado al ****4321",
-  "expiresInSeconds": 300,
-  "devCode": "123456"
+  "identifier": "juan@correo.com",
+  "password": "miClave123"
 }
 ```
 
-Errores:
-- `404 PHONE_NOT_REGISTERED` - el numero no tiene cuenta.
+### Con telefono
 
-## POST /api/v1/auth/login/verify
+```json
+{
+  "identifier": "987654321",
+  "password": "miClave123"
+}
+```
 
 **200 OK** - mismo formato que el registro.
 
+Errores:
+
+- `400 VALIDATION_ERROR` - falta `identifier` o `password`.
+- `401 INVALID_CREDENTIALS` - el usuario no existe o la contrasena es incorrecta.
+- `403 USER_INACTIVE` - la cuenta esta desactivada.
+
 ## GET /api/v1/auth/me
 
-Requiere `Authorization: Bearer <token>`.
+Requiere:
+
+```
+Authorization: Bearer <token>
+```
 
 **200 OK**
 
 ```json
 {
   "id": 1,
-  "phone": "+51987654321",
   "fullName": "Juan Perez",
+  "email": "juan@correo.com",
+  "phone": "+51987654321",
   "role": "USER",
-  "phoneVerified": true,
   "active": true,
-  "createdAt": "2026-11-07T15:00:00Z",
-  "lastLoginAt": "2026-11-07T15:00:00Z"
+  "createdAt": "2026-11-08T05:00:00Z",
+  "lastLoginAt": "2026-11-08T05:00:00Z"
 }
 ```
 
-## GET /api/v1/users/me y PATCH /api/v1/users/me
+Errores:
 
-`PATCH` recibe `{ "fullName": "Nuevo Nombre" }`.
+- `401 UNAUTHORIZED` - falta el token o es invalido/expirado.
 
-## Endpoints de administrador
+## Probar en Swagger UI
 
-Requieren que el usuario tenga rol `ADMIN`.
-
-- `GET /api/v1/admin/users`
-- `PATCH /api/v1/admin/users/{id}/role` con `{ "role": "ADMIN" }`
-
-## Como crear el primer ADMIN
-
-1. Registra la cuenta con el telefono que sera admin.
-2. Define `ADMIN_PHONE` y reinicia el backend:
-
-```powershell
-$env:ADMIN_PHONE="987654321"
-.\gradlew.bat bootRun
-```
-
-El `AdminSeeder` promueve esa cuenta a `ADMIN` al arrancar.
+1. Ejecuta el backend: `.\gradlew.bat bootRun`
+2. Abre `http://localhost:8080/swagger-ui.html`
+3. Despliega **Autenticacion** -> `POST /api/v1/auth/register`
+4. Pulsa **Try it out**, completa el JSON y pulsa **Execute**
+5. Copia el valor de `token` de la respuesta
+6. Pulsa el boton **Authorize** (arriba a la derecha)
+7. Pega el token **sin** la palabra `Bearer` y confirma
+8. Prueba `GET /api/v1/auth/me`
 
 ## Codigos de error
 
 | HTTP | code | Descripcion |
 |---|---|---|
-| 400 | VALIDATION_ERROR | Datos de entrada invalidos |
-| 400 | INVALID_ARGUMENT | Telefono invalido |
-| 400 | OTP_INVALID / OTP_EXPIRED / OTP_NOT_FOUND | Problema con el codigo |
-| 401 | UNAUTHORIZED | Falta token o es invalido |
-| 403 | FORBIDDEN | Sin permisos (rol insuficiente) |
-| 404 | PHONE_NOT_REGISTERED / USER_NOT_FOUND | No encontrado |
-| 409 | PHONE_ALREADY_REGISTERED | Numero ya registrado |
-| 429 | OTP_COOLDOWN / OTP_TOO_MANY_ATTEMPTS | Limite de envios/intentos |
-| 500 | INTERNAL_ERROR | Error inesperado |
+| 400 | `VALIDATION_ERROR` | Datos invalidos o JSON malformado |
+| 400 | `IDENTIFIER_REQUIRED` | Falta correo y telefono en el registro |
+| 400 | `INVALID_ARGUMENT` | Telefono con formato invalido |
+| 401 | `UNAUTHORIZED` | Falta token o es invalido |
+| 401 | `INVALID_CREDENTIALS` | Usuario o contrasena incorrectos |
+| 403 | `USER_INACTIVE` | Cuenta desactivada |
+| 404 | `USER_NOT_FOUND` / `NOT_FOUND` | Recurso no encontrado |
+| 405 | `METHOD_NOT_ALLOWED` | Metodo HTTP no permitido |
+| 409 | `EMAIL_ALREADY_REGISTERED` | Correo ya registrado |
+| 409 | `PHONE_ALREADY_REGISTERED` | Telefono ya registrado |
+| 409 | `CONFLICT` | Conflicto de integridad |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | Content-Type no soportado |
+| 500 | `INTERNAL_ERROR` | Error inesperado |
+
+Formato de error:
+
+```json
+{
+  "status": 401,
+  "code": "INVALID_CREDENTIALS",
+  "message": "Correo/telefono o contrasena incorrectos.",
+  "timestamp": "2026-11-08T05:00:00Z",
+  "details": []
+}
+```

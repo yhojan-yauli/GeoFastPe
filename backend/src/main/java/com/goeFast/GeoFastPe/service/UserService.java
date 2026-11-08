@@ -47,7 +47,7 @@ public class UserService {
         return UserResponse.from(userRepository.save(user));
     }
 
-    public User findUser(Long id) {
+    private User findUser(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Usuario no encontrado."));
     }

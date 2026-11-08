@@ -1,7 +1,7 @@
 package com.goeFast.GeoFastPe.security;
 
-import com.goeFast.GeoFastPe.service.JwtService;
 import com.goeFast.GeoFastPe.repository.UserRepository;
+import com.goeFast.GeoFastPe.service.JwtService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -55,7 +55,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             userRepository.findById(userId)
                     .filter(user -> user.isActive())
                     .ifPresent(user -> {
-                        UserPrincipal principal = new UserPrincipal(user.getId(), user.getPhone(), user.getRole());
+                        UserPrincipal principal = new UserPrincipal(
+                                user.getId(),
+                                user.getEmail(),
+                                user.getPhone(),
+                                user.getRole()
+                        );
                         var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
                         var authentication = new UsernamePasswordAuthenticationToken(principal, null, authorities);
                         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
