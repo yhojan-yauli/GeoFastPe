@@ -1,0 +1,304 @@
+
+/* ==========================================
+   PUBLICAR VENTA - GEOFASTPE
+========================================== */
+
+.publish-sale-page {
+  min-height: 100%;
+  padding: 24px 20px 60px;
+  background: #f8f9fc;
+  color: #1c1938;
+  box-sizing: border-box;
+}
+
+.publish-sale-container {
+  width: 100%;
+  max-width: 855px;
+  margin: 0 auto;
+}
+
+/* VOLVER */
+
+.publish-sale-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #7428e8;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.publish-sale-back:hover {
+  color: #5318b0;
+}
+
+/* ENCABEZADO */
+
+.publish-sale-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  background: linear-gradient(
+    110deg,
+    #efebff 0%,
+    #ece6ff 100%
+  );
+  color: #7225e6;
+}
+
+.publish-sale-hero h1 {
+  margin: 0 0 5px;
+  color: #1d193a;
+  font-size: 25px;
+  font-weight: 750;
+}
+
+.publish-sale-hero p {
+  margin: 0;
+  color: #77738d;
+  font-size: 13px;
+}
+
+/* FORMULARIO */
+
+.publish-sale-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 22px;
+  border: 1px solid #e3e5ec;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 2px 8px rgba(25, 20, 50, 0.04);
+}
+
+.publish-sale-field {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+}
+
+.publish-sale-field > label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 650;
+  color: #242137;
+}
+
+.publish-sale-field input:not([type="file"]),
+.publish-sale-field select,
+.publish-sale-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid #d9dce5;
+  border-radius: 9px;
+  outline: none;
+  background: white;
+  color: #25213b;
+  font-family: inherit;
+  font-size: 13px;
+  transition: border-color 0.2s;
+}
+
+.publish-sale-field input:focus,
+.publish-sale-field select:focus,
+.publish-sale-field textarea:focus {
+  border-color: #8c4bed;
+  box-shadow: 0 0 0 3px rgba(116, 40, 232, 0.08);
+}
+
+.publish-sale-field textarea {
+  resize: vertical;
+  min-height: 105px;
+}
+
+.publish-sale-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.publish-sale-counter {
+  align-self: flex-end;
+  color: #9294a3;
+  font-size: 11px;
+}
+
+/* CARGA DE IMAGEN */
+
+.publish-sale-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.publish-sale-upload {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center !important;
+  justify-content: center;
+  gap: 10px;
+  min-height: 145px;
+  padding: 18px;
+  border: 2px dashed #cbb5f4;
+  border-radius: 10px;
+  background: #f7f3ff;
+  color: #7428e8 !important;
+  cursor: pointer;
+  text-align: center;
+}
+
+.publish-sale-upload strong {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.publish-sale-upload span {
+  color: #9290a2;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.publish-sale-preview {
+  position: relative;
+  width: 100%;
+  max-width: 350px;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid #e3e5ec;
+}
+
+.publish-sale-preview img {
+  display: block;
+  width: 100%;
+  max-height: 230px;
+  object-fit: cover;
+}
+
+.publish-sale-preview button {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: white;
+  color: #c23b52;
+  cursor: pointer;
+}
+
+/* MENSAJES */
+
+.publish-sale-message {
+  padding: 13px 15px;
+  border-radius: 9px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.publish-sale-message.error {
+  background: #fff0f0;
+  border: 1px solid #f3b6b6;
+  color: #a52a2a;
+}
+
+.publish-sale-message.success {
+  background: #ecf9f0;
+  border: 1px solid #a6dfb5;
+  color: #237541;
+}
+
+/* BOTONES */
+
+.publish-sale-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.publish-sale-cancel,
+.publish-sale-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.publish-sale-cancel {
+  border: 1px solid #dce0e8;
+  background: white;
+  color: #4c4b5f;
+}
+
+.publish-sale-submit {
+  border: 1px solid #7225e6;
+  background: #7225e6;
+  color: white;
+}
+
+.publish-sale-submit:hover {
+  background: #5e1bc6;
+}
+
+.publish-sale-submit:disabled,
+.publish-sale-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 650px) {
+  .publish-sale-page {
+    padding: 16px 12px 35px;
+  }
+
+  .publish-sale-hero {
+    padding: 18px;
+  }
+
+  .publish-sale-hero h1 {
+    font-size: 21px;
+  }
+
+  .publish-sale-form {
+    padding: 16px;
+  }
+
+  .publish-sale-row {
+    grid-template-columns: 1fr;
+  }
+
+  .publish-sale-actions {
+    flex-direction: column-reverse;
+  }
+
+  .publish-sale-cancel,
+  .publish-sale-submit {
+    width: 100%;
+  }
+}
