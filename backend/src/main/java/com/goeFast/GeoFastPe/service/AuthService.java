@@ -46,6 +46,11 @@ public class AuthService {
             );
         }
 
+        String username = request.username().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
+            throw new ApiException(HttpStatus.CONFLICT, "USERNAME_ALREADY_REGISTERED", "Ese nombre de usuario ya esta registrado.");
+        }
+
         if (email != null && userRepository.existsByEmail(email)) {
             throw new ApiException(
                     HttpStatus.CONFLICT,
@@ -64,6 +69,7 @@ public class AuthService {
 
         User user = new User();
         user.setName(request.name().trim());
+        user.setUsername(username);
         user.setEmail(email);
         user.setPhone(phone);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
@@ -109,6 +115,9 @@ public class AuthService {
     }
 
     private java.util.Optional<User> findByIdentifier(String identifier) {
+        if (!identifier.contains("@") && !identifier.matches("[+0-9\\s().-]{6,20}")) {
+            return userRepository.findByUsernameIgnoreCase(identifier);
+        }
         if (identifier.contains("@")) {
             return userRepository.findByEmail(identifier.toLowerCase(Locale.ROOT));
         }

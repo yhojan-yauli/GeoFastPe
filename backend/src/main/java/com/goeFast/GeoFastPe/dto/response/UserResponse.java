@@ -9,6 +9,7 @@ import java.time.Instant;
 public record UserResponse(
         @Schema(description = "Identificador del usuario", example = "1")
         Long id,
+        String username,
         @Schema(description = "Nombre completo", example = "Juan Perez")
         String name,
         @Schema(description = "Correo electronico", example = "juan@correo.com", nullable = true)
@@ -34,6 +35,7 @@ public record UserResponse(
     public static UserResponse from(User user) {
         return new UserResponse(
                 user.getId(),
+                user.getUsername(),
                 user.getName(),
                 user.getEmail(),
                 user.getPhone(),

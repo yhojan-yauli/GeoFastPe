@@ -14,14 +14,19 @@ public record ConversationResponse(
         String preview,
         Instant time,
         int unread,
-        Instant createdAt
+        Instant createdAt,
+        Long ownerId,
+        String ownerName,
+        String ownerUsername,
+        int memberCount,
+        boolean publicGroup
 ) {
 
-    public static ConversationResponse from(Conversation c, String preview, int unread) {
+    public static ConversationResponse from(Conversation c, String preview, int unread, int memberCount) {
         return new ConversationResponse(
                 c.getId(), c.getTitle(), c.getSubtitle(), c.getCategory(),
                 preview, c.getLastMessageAt() != null ? c.getLastMessageAt() : c.getCreatedAt(),
-                unread, c.getCreatedAt()
+                unread, c.getCreatedAt(), c.getCreatedBy().getId(), c.getCreatedBy().getName(), c.getCreatedBy().getUsername(), memberCount, c.isPublicGroup()
         );
     }
 }

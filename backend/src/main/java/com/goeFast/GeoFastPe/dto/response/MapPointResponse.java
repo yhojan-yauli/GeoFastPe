@@ -2,7 +2,7 @@ package com.goeFast.GeoFastPe.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(description = "Punto para el mapa. kind: SERVICIO o EMERGENCIA. type es el tipo de servicio o de emergencia.")
+@Schema(description = "Punto comunitario para el mapa con información suficiente para mostrar el detalle sin otra petición.")
 public record MapPointResponse(
         String kind,
         Long id,
@@ -12,6 +12,12 @@ public record MapPointResponse(
         String description,
         Double lat,
         Double lng,
-        double distance
-) {
-}
+        double distance,
+        String location,
+        String status,
+        String priority,
+        String ownerName,
+        String image,
+        String date,
+        String time
+) {}
