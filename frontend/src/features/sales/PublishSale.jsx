@@ -14,21 +14,6 @@ import './PublishSale.css';
 const categories = ['Tecnología', 'Hogar', 'Moda', 'Deportes', 'Vehículos', 'Libros', 'Otros'];
 
 const districts = [
-  'Cercado',
-  'Cayma',
-  'Yanahuara',
-  'Cerro Colorado',
-  'Paucarpata',
-  'José Luis Bustamante y Rivero',
-  'Miraflores',
-  'Mariano Melgar',
-  'Sachaca',
-  'Socabaya',
-  'Hunter',
-  'Alto Selva Alegre',
-  'Tiabaya',
-  'Uchumayo',
-  'Otro'
 ];
 
 const initialForm = {
@@ -208,12 +193,6 @@ export default function PublishSale({ onBack, onSubmitSale, onPickLocation }) {
               <MapPin size={16} />
               Ubicación del producto *
             </label>
-            <select id="sale-location" name="location" value={form.location} onChange={updateField} required>
-              <option value="">Selecciona tu distrito</option>
-              {districts.map((district) => (
-                <option key={district} value={district}>{district}</option>
-              ))}
-            </select>
           </div>
 
           <div className="publish-sale-field">
