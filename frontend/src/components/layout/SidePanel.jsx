@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import AuthHeader from '../../features/auth/AuthHeader.jsx';
 
@@ -91,7 +90,15 @@ export default function SidePanel({
   onRadiusChange,
   onLogin,
   onRegister,
-  onViewService
+  onViewService,
+  onViewSalesCatalog,
+  onViewSolidarity,
+  onViewEmergencies,
+  emergencyReports = [],
+  onViewReports,
+  onViewEvents,
+  communityEvents = [],
+  citizenReports = []
 }) {
 
   // ==========================================
@@ -113,11 +120,10 @@ export default function SidePanel({
       return templates[section] || [];
     }
 
-    // Reportes y eventos
-    if (
-      section === 'Reportes' ||
-      section === 'Eventos'
-    ) {
+    if (['Ventas', 'Solidaridad', 'Emergencias', 'Reportes', 'Eventos'].includes(section)) return [];
+
+    // Eventos y otras plantillas
+    if (section === 'Eventos') {
       return templates[section] || [];
     }
 
@@ -190,14 +196,14 @@ export default function SidePanel({
 
           <p>
             {isMapSection
-              ? `Resultados dentro de un radio de ${radius} m`
+              ? section === 'Emergencias' ? 'Reportes SOS de demostración' : `Resultados dentro de un radio de ${radius} m`
               : 'Tu espacio comunitario'}
           </p>
         </div>
 
         <span className="panel-count">
           {isMapSection
-            ? items.length
+            ? section === 'Emergencias' ? emergencyReports.length : section === 'Reportes' ? citizenReports.length : section === 'Eventos' ? communityEvents.length : items.length
             : '•••'}
         </span>
       </div>
@@ -205,7 +211,7 @@ export default function SidePanel({
       {/* =====================================
           FILTRO DE RADIO
       ===================================== */}
-      {isMapSection && (
+      {isMapSection && section !== 'Emergencias' && (
         <div className="radius-filter">
 
           <div className="filter-label">
@@ -240,12 +246,116 @@ export default function SidePanel({
         </div>
       )}
 
+      {section === 'Emergencias' && (
+        <div className="radius-filter">
+          <p>Consulta y registra alertas de emergencia en modo demostración. No se notifica a las autoridades automáticamente.</p>
+          <button type="button" className="publish-back" onClick={() => onViewEmergencies?.()}>
+            Ver Emergencias (SOS) ›
+          </button>
+        </div>
+      )}
+
+      {section === 'Eventos' && (
+        <div className="radius-filter">
+          <p>Explora eventos comunitarios de demostración y consulta las actividades publicadas.</p>
+          <button type="button" className="publish-back" onClick={() => onViewEvents?.()}>
+            Ver Eventos Comunitarios ›
+          </button>
+        </div>
+      )}
+
+      {section === 'Reportes' && (
+        <div className="radius-filter">
+          <p>Consulta incidencias comunitarias y crea reportes. Los ejemplos no representan incidencias verificadas.</p>
+          <button type="button" className="publish-back" onClick={() => onViewReports?.()}>
+            Ver Reportes Comunitarios ›
+          </button>
+        </div>
+      )}
+
+      {section === 'Solidaridad' && (
+        <div className="radius-filter">
+          <p>Consulta las donaciones y solicitudes de ayuda de la comunidad. Las publicaciones de demostración aún no están geolocalizadas.</p>
+          <button
+            type="button"
+            className="publish-back"
+            onClick={() => onViewSolidarity?.()}
+          >
+            Ver Solidaridad y Donaciones ›
+          </button>
+        </div>
+      )}
+
+      {section === 'Ventas' && (
+        <div className="radius-filter">
+          <p>Explora el catálogo de Ventas Locales. Las publicaciones de prueba todavía no tienen ubicación geográfica validada.</p>
+          <button
+            type="button"
+            className="publish-back"
+            onClick={() => onViewSalesCatalog?.()}
+          >
+            Ver Ventas Locales ›
+          </button>
+        </div>
+      )}
+
       {/* =====================================
           LISTADO DE PUBLICACIONES
       ===================================== */}
       <div className="panel-list">
 
-        {items.length > 0 ? (
+        {section === 'Eventos' ? (
+          communityEvents.length ? communityEvents.map((event, index) => (
+            <article className="nearby-card" key={event.id ?? index}>
+              <div className="nearby-icon purple">▦</div>
+              <div className="nearby-copy">
+                <h3>{event.title}</h3>
+                <p>{event.category} · {event.date} · {event.time}</p>
+                <small>{event.location}</small>
+              </div>
+              <button type="button" className="card-arrow" onClick={() => onViewEvents?.()} title="Ver eventos">›</button>
+            </article>
+          )) : (
+            <div className="empty-state"><h3>Eventos comunitarios</h3><p>Abre el catálogo para explorar eventos de demostración o publicar una actividad.</p></div>
+          )
+        ) : section === 'Reportes' ? (
+          citizenReports.length === 0 ? (
+            <div className="empty-state"><h3>Reportes comunitarios</h3><p>Abre el listado para explorar ejemplos o crear un reporte.</p></div>
+          ) : (
+            citizenReports.map((report, index) => (
+              <article className="nearby-card" key={report.id ?? index}>
+                <div className="nearby-icon purple">⚑</div>
+                <div className="nearby-copy">
+                  <h3>{report.title}</h3>
+                  <p>{report.category} · {report.location}</p>
+                  <small>Reporte local · {report.status || 'Pendiente'}</small>
+                </div>
+              </article>
+            ))
+          )
+        ) : section === 'Emergencias' ? (
+          emergencyReports.length === 0 ? (
+            <div className="empty-state">
+              <h3>No hay emergencias registradas</h3>
+              <p>Los reportes de demostración aparecerán aquí. No se notifican a las autoridades.</p>
+            </div>
+          ) : (
+            emergencyReports.map((report, index) => (
+              <article className="nearby-card" key={report.id ?? index}>
+                <div className="nearby-icon danger">!</div>
+                <div className="nearby-copy">
+                  <h3>{report.title || report.titulo || 'Emergencia reportada'}</h3>
+                  <p>{report.type || report.tipo || 'Emergencia'} · {report.urgency || report.urgencia || 'Urgencia no indicada'}</p>
+                  <small>Reporte de demostración · No enviado a autoridades</small>
+                </div>
+              </article>
+            ))
+          )
+        ) : section === 'Solidaridad' ? (
+          <div className="empty-state"><h3>Donaciones y solicitudes</h3><p>Abre Solidaridad para explorar las publicaciones de demostración.</p></div>
+        ) : section === 'Ventas' ? (
+          <div className="empty-state"><h3>Catálogo disponible</h3><p>Abre Ventas Locales para consultar productos.</p></div>
+        ) : items.length > 0 ? (
 
           items.map((item, index) => {
 
@@ -384,4 +494,3 @@ export default function SidePanel({
     </aside>
   );
 }
-

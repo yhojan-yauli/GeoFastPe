@@ -1,0 +1,42 @@
+.gf-auth-overlay.login-required-overlay {
+  position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
+  padding: 20px; overflow-y: auto; background: rgba(22, 16, 52, .32); backdrop-filter: blur(5px);
+}
+.gf-auth-card.login-required-card {
+  position: relative; width: min(100%, 448px); max-height: calc(100dvh - 40px); overflow-y: auto;
+  box-sizing: border-box; padding: 29px 36px 28px; margin: auto;
+  background: #fff; border: 1px solid #e7e0fa; border-radius: 23px;
+  box-shadow: 0 20px 55px rgba(39, 23, 92, .19); color: #1d173b; text-align: center;
+}
+.gf-auth-card * { box-sizing: border-box; }
+.gf-auth-close.auth-close { position: absolute; top: 14px; right: 17px; background: #f5f2fc; border: 0; color: #6d5a8b; width: 30px; height: 30px; border-radius: 9px; font-size: 22px; cursor: pointer; }
+.gf-auth-brand { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 20px; font-weight: 800; letter-spacing: -.5px; margin: 2px 0 26px; }
+.gf-auth-brand > span:last-child > span { color: #7c30e8; }
+.gf-auth-brand-mark { display: inline-grid; place-items: center; width: 31px; height: 31px; border-radius: 10px; color: white; font-weight: 800; background: linear-gradient(135deg, #6726dd, #5979ff); font-size: 17px; }
+.gf-auth-symbol { display: grid; place-items: center; margin: 0 auto 9px; width: 50px; height: 50px; background: #f1eafd; color: #7229e8; border-radius: 16px; font-size: 29px; font-weight: 700; }
+.gf-auth-card h2 { font-size: 25px; line-height: 1.25; margin: 0 0 7px; color: #1b153b; font-weight: 800; }
+.gf-auth-card .gf-auth-subtitle { margin: 0 0 23px; color: #77778b; font-size: 13px; }
+.gf-auth-form.auth-form { display: flex; flex-direction: column; gap: 12px; }
+.gf-auth-field { display: flex; align-items: center; gap: 10px; width: 100%; height: 49px; border: 1px solid #dedee9; border-radius: 12px; background: #fff; padding: 0 13px; transition: border-color .2s, box-shadow .2s; }
+.gf-auth-field:focus-within { border-color: #8d4af3; box-shadow: 0 0 0 3px rgba(125, 54, 236, .1); }
+.gf-auth-field-icon { width: 19px; flex-shrink: 0; color: #7835df; font-size: 20px; font-weight: 700; }
+.gf-auth-form .gf-auth-field input { min-width: 0; flex: 1; width: 100%; height: 100%; padding: 0; margin: 0; border: 0; outline: none; background: transparent; box-shadow: none; color: #27213e; font: inherit; font-size: 13px; }
+.gf-auth-field input::placeholder { color: #9896a4; }
+.gf-auth-eye { border: 0; background: none; color: #6f618c; cursor: pointer; padding: 6px 0 6px 6px; font-size: 12px; font-weight: 600; }
+.gf-auth-options { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 2px 0 3px; }
+.gf-auth-checkbox { display: flex; align-items: flex-start; gap: 7px; text-align: left; color: #494355; font-size: 12px; line-height: 1.5; cursor: pointer; }
+.gf-auth-checkbox input { accent-color: #7a2ee9; margin: 2px 0 0; flex-shrink: 0; }
+.gf-auth-link { padding: 0; border: 0; background: transparent; color: #7527de; font-size: 12px; font-weight: 700; cursor: pointer; }
+.gf-auth-checklist { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; background: #f4faf5; color: #65736b; padding: 13px 15px; border-radius: 11px; font-size: 12px; text-align: left; }
+.gf-auth-checklist strong { color: #285e3b; margin-bottom: 3px; }
+.gf-auth-checklist .valid { color: #20844a; font-weight: 600; }
+.gf-auth-terms { margin: 3px 0 1px; }
+.gf-auth-message { margin: 0; padding: 9px 11px; border-radius: 9px; background: #fff8eb; color: #805719; font-size: 12px; text-align: left; }
+.gf-auth-submit.auth-login-btn { width: 100%; min-height: 48px; margin-top: 3px; border: 0; border-radius: 11px; color: #fff; background: linear-gradient(105deg, #6826df, #962df0); box-shadow: 0 5px 12px rgba(111, 36, 219, .18); font-size: 14px; font-weight: 750; cursor: pointer; transition: filter .2s, transform .2s; }
+.gf-auth-submit:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.gf-auth-footer { margin-top: 22px; padding-top: 18px; border-top: 1px solid #eee9f4; font-size: 12px; color: #5e596d; }
+.gf-auth-footer .gf-auth-link { display: inline; }
+.gf-auth-demo.auth-demo-section { margin-top: 14px; padding: 0; border: 0; background: transparent; }
+.gf-auth-demo .auth-demo-button { display: block; width: 100%; padding: 6px; margin: 0; border: 0; background: transparent; color: #71678b; font-size: 12px; cursor: pointer; }
+.gf-auth-demo small { display: block; margin-top: 4px; color: #a09aa9; font-size: 10px; line-height: 1.45; }
+@media (max-width: 480px) { .gf-auth-card.login-required-card { padding: 26px 22px 22px; border-radius: 19px; } .gf-auth-options { flex-wrap: wrap; } }

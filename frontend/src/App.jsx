@@ -1,5 +1,24 @@
-
 import { useEffect, useState } from 'react';
+import EventsPage, { demoEvents } from './features/events/EventsPage.jsx';
+import CreateEvent from './features/events/CreateEvent.jsx';
+import EventDetail from './features/events/EventDetail.jsx';
+import ReportsPage, { demoReports } from './features/reports/ReportsPage.jsx';
+import CreateReport from './features/reports/CreateReport.jsx';
+import ReportDetail from './features/reports/ReportDetail.jsx';
+import EmergencyPage from './features/emergency/EmergencyPage.jsx';
+import ReportEmergency from './features/emergency/ReportEmergency.jsx';
+
+// ==========================================
+// VENTAS LOCALES
+// ==========================================
+import SalesPage from './features/sales/SalesPage.jsx';
+import PublishSale from './features/sales/PublishSale.jsx';
+import SaleDetail from './features/sales/SaleDetail.jsx';
+
+// SOLIDARIDAD
+import SolidarityPage from './features/solidarity/SolidarityPage.jsx';
+import RequestHelp from './features/solidarity/RequestHelp.jsx';
+import PublishDonation from './features/solidarity/PublishDonation.jsx';
 
 // ==========================================
 // COMPONENTES DEL MAPA
@@ -40,6 +59,12 @@ import PublishService from './features/services/PublishService.jsx';
 // ==========================================
 import { initializeGeoFastPe } from './engine/geoFastEngine.js';
 
+// MENSAJES PRIVADOS
+import MessagesPage from './features/messages/MessagesPage.jsx';
+
+// PERFIL PRIVADO
+import ProfilePage from './features/profile/ProfilePage.jsx';
+
 const PRIVATE_SECTIONS = [
   'Mensajes',
   'Mi Perfil',
@@ -48,6 +73,22 @@ const PRIVATE_SECTIONS = [
 
 export default function App() {
   const { isAuthenticated } = useAuth();
+
+  // ==========================================
+// ESTADOS DE VENTAS
+// ==========================================
+const [salesView, setSalesView] = useState('map');
+const [selectedSale, setSelectedSale] = useState(null);
+  const [solidarityView, setSolidarityView] = useState('map');
+  const [emergencyView, setEmergencyView] = useState('map');
+  const [emergencyType, setEmergencyType] = useState('Incendio');
+  const [emergencyReports, setEmergencyReports] = useState([]);
+  const [reportsView, setReportsView] = useState('map');
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [citizenReports, setCitizenReports] = useState([]);
+  const [eventsView, setEventsView] = useState('map');
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [communityEvents, setCommunityEvents] = useState([]);
 
   // ==========================================
   // ESTADOS DEL MAPA
@@ -172,11 +213,59 @@ export default function App() {
       setShowPublishService(true);
     }
 
+    else if (pendingAction === 'publish-donation' || pendingAction === 'request-help') {
+      setSection('Solidaridad');
+      setSolidarityView(pendingAction === 'publish-donation' ? 'donate' : 'request');
+      setSalesView('map');
+      setShowServicesDetail(false);
+      setShowPublishService(false);
+    }
+
+    else if (pendingAction === 'report-emergency') {
+      setSection('Emergencias');
+      setEmergencyView('report');
+      setSalesView('map');
+      setSolidarityView('map');
+      setShowServicesDetail(false);
+      setShowPublishService(false);
+    }
+
+    else if (pendingAction === 'create-report') {
+      setSection('Reportes');
+      setReportsView('create');
+      setSalesView('map');
+      setSolidarityView('map');
+      setEmergencyView('map');
+      setShowServicesDetail(false);
+      setShowPublishService(false);
+    }
+
+    else if (pendingAction === 'create-event') {
+      setSection('Eventos');
+      setEventsView('create');
+      setSalesView('map');
+      setSolidarityView('map');
+      setEmergencyView('map');
+      setReportsView('map');
+      setShowServicesDetail(false);
+      setShowPublishService(false);
+    }
+
+    else if (pendingAction === 'publish-sale') {
+      setSection('Ventas');
+      setSalesView('publish');
+      setShowServicesDetail(false);
+      setShowPublishService(false);
+    }
+
     // Si intentó entrar a una sección privada
     else if (pendingSection) {
       setSection(pendingSection);
       setShowServicesDetail(false);
       setShowPublishService(false);
+      setSalesView('map');
+      setSolidarityView('map');
+      setEmergencyView('map');
     }
 
     // Si inició sesión desde el panel derecho,
@@ -210,6 +299,14 @@ export default function App() {
     setShowServicesDetail(false);
     setShowPublishService(false);
     setSelectedService(null);
+    setSalesView('map');
+    setSelectedSale(null);
+    setSolidarityView('map');
+    setEmergencyView('map');
+    setReportsView('map');
+    setSelectedReport(null);
+    setEventsView('map');
+    setSelectedEvent(null);
 
     const selectedCategory =
       PRIVATE_SECTIONS.includes(name)
@@ -304,11 +401,195 @@ export default function App() {
   };
 
   // ==========================================
+  // NAVEGACIÓN DE VENTAS
+  // ==========================================
+  const openSalesCatalog = () => {
+    setSection('Ventas');
+    setShowServicesDetail(false);
+    setShowPublishService(false);
+    setSelectedSale(null);
+    setSalesView('catalog');
+  };
+
+  const openSaleDetail = (product) => {
+    setSection('Ventas');
+    setSelectedSale(product);
+    setSalesView('detail');
+  };
+
+  const openPublishSale = () => {
+    if (!isAuthenticated) {
+      requireLogin(null, 'publish-sale');
+      return;
+    }
+    setSection('Ventas');
+    setShowServicesDetail(false);
+    setShowPublishService(false);
+    setSalesView('publish');
+  };
+
+  const backToSales = () => {
+    setSection('Ventas');
+    setSelectedSale(null);
+    setSalesView('catalog');
+  };
+
+  const backToSalesMap = () => {
+    setSection('Ventas');
+    setSelectedSale(null);
+    setSalesView('map');
+    window.GeoFastPe?.setCategory('Ventas');
+  };
+
+  // ==========================================
+  // NAVEGACIÓN DE SOLIDARIDAD
+  // ==========================================
+  const openSolidarity = () => {
+    setSection('Solidaridad');
+    setShowServicesDetail(false);
+    setShowPublishService(false);
+    setSalesView('map');
+    setSolidarityView('catalog');
+  };
+
+  const openSolidarityForm = (kind) => {
+    if (!isAuthenticated) {
+      requireLogin(null, kind === 'donate' ? 'publish-donation' : 'request-help');
+      return;
+    }
+    setSection('Solidaridad');
+    setSolidarityView(kind);
+  };
+
+  const backToSolidarityMap = () => {
+    setSection('Solidaridad');
+    setSolidarityView('map');
+    window.GeoFastPe?.setCategory('Solidaridad');
+  };
+
+  // ==========================================
+  // EMERGENCIAS SOS (demostración en memoria)
+  // ==========================================
+  const openEmergencies = () => {
+    setSection('Emergencias');
+    setSalesView('map');
+    setSolidarityView('map');
+    setShowServicesDetail(false);
+    setShowPublishService(false);
+    setEmergencyView('catalog');
+  };
+
+  const openEmergencyForm = (type = 'Incendio') => {
+    setEmergencyType(type);
+    if (!isAuthenticated) {
+      requireLogin(null, 'report-emergency');
+      return;
+    }
+    setSection('Emergencias');
+    setEmergencyView('report');
+  };
+
+  const saveEmergencyReport = (report) => {
+    setEmergencyReports((previous) => [report, ...previous]);
+    setEmergencyView('catalog');
+  };
+
+  const backToEmergenciesMap = () => {
+    setSection('Emergencias');
+    setEmergencyView('map');
+    window.GeoFastPe?.setCategory('Emergencias');
+  };
+
+  // ==========================================
+  // REPORTES COMUNITARIOS (estado local)
+  // ==========================================
+  const openReports = () => {
+    setSection('Reportes');
+    setSalesView('map');
+    setSolidarityView('map');
+    setEmergencyView('map');
+    setShowServicesDetail(false);
+    setShowPublishService(false);
+    setReportsView('catalog');
+  };
+
+  const openCreateReport = () => {
+    if (!isAuthenticated) {
+      requireLogin(null, 'create-report');
+      return;
+    }
+    setSection('Reportes');
+    setReportsView('create');
+  };
+
+  const openReportDetail = (report) => {
+    setSelectedReport(report);
+    setSection('Reportes');
+    setReportsView('detail');
+  };
+
+  const saveCitizenReport = (report) => {
+    setCitizenReports((previous) => [report, ...previous]);
+    setReportsView('catalog');
+  };
+
+  const backToReportsMap = () => {
+    setSection('Reportes');
+    setReportsView('map');
+    window.GeoFastPe?.setCategory('Reportes');
+  };
+
+  // ==========================================
+  // EVENTOS COMUNITARIOS (estado local)
+  // ==========================================
+  const openEvents = () => {
+    setSection('Eventos');
+    setSalesView('map');
+    setSolidarityView('map');
+    setEmergencyView('map');
+    setReportsView('map');
+    setShowServicesDetail(false);
+    setShowPublishService(false);
+    setEventsView('catalog');
+  };
+
+  const openCreateEvent = () => {
+    if (!isAuthenticated) {
+      requireLogin(null, 'create-event');
+      return;
+    }
+    setSection('Eventos');
+    setEventsView('create');
+  };
+
+  const openEventDetail = (event) => {
+    setSelectedEvent(event);
+    setSection('Eventos');
+    setEventsView('detail');
+  };
+
+  const saveCommunityEvent = (event) => {
+    setCommunityEvents((previous) => [event, ...previous]);
+    setEventsView('catalog');
+  };
+
+  const backToEventsMap = () => {
+    setSection('Eventos');
+    setEventsView('map');
+    window.GeoFastPe?.setCategory('Eventos');
+  };
+
+  // ==========================================
   // CONTROL AL CERRAR SESIÓN
   // ==========================================
   useEffect(() => {
     if (!isAuthenticated) {
       setShowPublishService(false);
+      setSalesView((current) => current === 'publish' ? 'catalog' : current);
+      setSolidarityView((current) => ['donate', 'request'].includes(current) ? 'catalog' : current);
+      setEmergencyView((current) => current === 'report' ? 'catalog' : current);
+      setReportsView((current) => current === 'create' ? 'catalog' : current);
+      setEventsView((current) => current === 'create' ? 'catalog' : current);
 
       // Servicios NO es privado
       if (PRIVATE_SECTIONS.includes(section)) {
@@ -323,8 +604,19 @@ export default function App() {
   const showServicesPage =
     showServicesDetail || showPublishService;
 
+  const showSalesPage = section === 'Ventas' && salesView !== 'map';
+
+  const showSolidarityPage = section === 'Solidaridad' && solidarityView !== 'map';
+
+  const showEmergencyPage = section === 'Emergencias' && emergencyView !== 'map';
+
+  const showReportsPage = section === 'Reportes' && reportsView !== 'map';
+  const showEventsPage = section === 'Eventos' && eventsView !== 'map';
+  const showMessagesPage = section === 'Mensajes' && isAuthenticated;
+  const showProfilePage = section === 'Mi Perfil' && isAuthenticated;
+
   const showMapInterface =
-    !showServicesPage;
+    !showServicesPage && !showSalesPage && !showSolidarityPage && !showEmergencyPage && !showReportsPage && !showEventsPage && !showMessagesPage && !showProfilePage;
 
   // ==========================================
   // INTERFAZ PRINCIPAL
@@ -387,6 +679,14 @@ export default function App() {
             onLogin={openLogin}
             onRegister={openRegister}
             onViewService={openServicesDetail}
+            onViewSalesCatalog={openSalesCatalog}
+            onViewSolidarity={openSolidarity}
+            onViewEmergencies={openEmergencies}
+            emergencyReports={emergencyReports}
+            onViewReports={openReports}
+            citizenReports={citizenReports}
+            onViewEvents={openEvents}
+            communityEvents={communityEvents}
           />
         </div>
 
@@ -431,6 +731,139 @@ export default function App() {
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* SOLIDARIDAD: LISTADO, SOLICITUD Y DONACIÓN */}
+        {showSolidarityPage && (
+          <div className="geofastpe-content-workspace">
+            {solidarityView === 'donate' ? (
+              <PublishDonation onBack={openSolidarity} />
+            ) : solidarityView === 'request' ? (
+              <RequestHelp onBack={openSolidarity} />
+            ) : (
+              <div>
+                <button
+                  type="button"
+                  className="publish-back"
+                  onClick={backToSolidarityMap}
+                  style={{ margin: '16px 0 0 32px' }}
+                >
+                  ← Volver al mapa
+                </button>
+                <SolidarityPage
+                  onPublishDonation={() => openSolidarityForm('donate')}
+                  onRequestHelp={() => openSolidarityForm('request')}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* EMERGENCIAS: LISTADO Y FORMULARIO */}
+        {showEmergencyPage && (
+          <div className="geofastpe-content-workspace">
+            {emergencyView === 'report' ? (
+              <ReportEmergency
+                initialType={emergencyType}
+                onBack={openEmergencies}
+                onSubmit={saveEmergencyReport}
+              />
+            ) : (
+              <div>
+                <button type="button" className="publish-back" onClick={backToEmergenciesMap} style={{ margin: '16px 0 0 32px' }}>
+                  ← Volver al mapa
+                </button>
+                <EmergencyPage reports={emergencyReports} onReport={openEmergencyForm} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* REPORTES: LISTADO, CREACIÓN Y DETALLE */}
+        {showReportsPage && (
+          <div className="geofastpe-content-workspace">
+            {reportsView === 'create' ? (
+              <CreateReport onBack={openReports} onSubmitReport={saveCitizenReport} />
+            ) : reportsView === 'detail' ? (
+              <ReportDetail report={selectedReport} onBack={openReports} />
+            ) : (
+              <div>
+                <button type="button" className="publish-back" onClick={backToReportsMap} style={{ margin: '16px 0 0 32px' }}>
+                  ← Volver al mapa
+                </button>
+                <ReportsPage
+                  reports={[...citizenReports, ...demoReports]}
+                  onCreateReport={openCreateReport}
+                  onViewReport={openReportDetail}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* EVENTOS: CATÁLOGO, CREACIÓN Y DETALLE */}
+        {showEventsPage && (
+          <div className="geofastpe-content-workspace">
+            {eventsView === 'create' ? (
+              <CreateEvent onBack={openEvents} onSubmitEvent={saveCommunityEvent} />
+            ) : eventsView === 'detail' ? (
+              <EventDetail event={selectedEvent} onBack={openEvents} />
+            ) : (
+              <div>
+                <button type="button" className="publish-back" onClick={backToEventsMap} style={{ margin: '16px 0 0 32px' }}>
+                  ← Volver al mapa
+                </button>
+                <EventsPage
+                  events={[...communityEvents, ...demoEvents]}
+                  onCreateEvent={openCreateEvent}
+                  onViewEvent={openEventDetail}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MENSAJES: VISTA PRIVADA, SOLO CON SESIÓN ACTIVA */}
+        {showMessagesPage && (
+          <div className="geofastpe-content-workspace">
+            <MessagesPage isAuthenticated={isAuthenticated} />
+          </div>
+        )}
+
+        {/* MI PERFIL: VISTA PRIVADA, SOLO CON SESIÓN ACTIVA */}
+        {showProfilePage && (
+          <div className="geofastpe-content-workspace">
+            <ProfilePage isAuthenticated={isAuthenticated} />
+          </div>
+        )}
+
+        {/* VENTAS: CATÁLOGO, DETALLE Y PUBLICACIÓN */}
+        {showSalesPage && (
+          <div className="geofastpe-content-workspace">
+            {salesView === 'publish' ? (
+              <PublishSale onBack={backToSales} />
+            ) : salesView === 'detail' ? (
+              <SaleDetail
+                product={selectedSale}
+                onBack={backToSales}
+              />
+            ) : (
+              <div>
+                <button
+                  type="button"
+                  className="publish-back"
+                  onClick={backToSalesMap}
+                  style={{ margin: '16px 0 0 32px' }}
+                >
+                  ← Volver al mapa
+                </button>
+                <SalesPage
+                  onCreateSale={openPublishSale}
+                  onViewSale={openSaleDetail}
+                />
+              </div>
+            )}
           </div>
         )}
 
