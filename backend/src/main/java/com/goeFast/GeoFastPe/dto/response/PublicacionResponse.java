@@ -1,9 +1,11 @@
 package com.goeFast.GeoFastPe.dto.response;
 
+import java.time.LocalDateTime;
+
 import com.goeFast.GeoFastPe.entity.Publicacion.CategoriaPublicacion;
+
 import lombok.Builder;
 import lombok.Data;
-import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -18,4 +20,6 @@ public class PublicacionResponse {
     private String autorUsername;
     private LocalDateTime fechaCreacion;
     private Boolean esEmergencia;
+    private LocalDateTime fechaExpiracion;
+    private Boolean expirada; // ← Nuevo: indica si ya expirado
 }

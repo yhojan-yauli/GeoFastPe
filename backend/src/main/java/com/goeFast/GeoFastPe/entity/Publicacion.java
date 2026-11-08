@@ -18,22 +18,23 @@ public class Publicacion {
     private String titulo;
     private String descripcion;
 
-    // Categoría: EVENTO, NOTICIA, SERVICIO (Gasfitería, Cerrajería, etc.)
     @Enumerated(EnumType.STRING)
     private CategoriaPublicacion categoria;
 
-    // Ubicación
     private Double latitud;
     private Double longitud;
 
-    // Para el "Visto Bueno Vecinal" (Recomendaciones)
     private Integer votosPositivos = 0;
 
-    // Control
     private String autorUsername;
     private LocalDateTime fechaCreacion = LocalDateTime.now();
-    
-    // Para emergencias
+
+    /**
+     * Fecha opcional de expiración. Si es null, la publicación nunca expira.
+     * Si tiene fecha, el backend la ignorará en las búsquedas después de esa fecha.
+     */
+    private LocalDateTime fechaExpiracion;
+
     private Boolean esEmergencia = false;
 
     public enum CategoriaPublicacion {
