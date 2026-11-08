@@ -43,10 +43,12 @@ public record EventRequest(
         @Schema(example = "Parque Selva Alegre, Arequipa")
         String location,
 
-        @Schema(nullable = true, example = "-16.4000")
+        @NotNull(message = "La latitud es obligatoria: elige el punto en el mapa")
+        @Schema(description = "Latitud del punto elegido en el mapa", example = "-16.4000")
         Double lat,
 
-        @Schema(nullable = true, example = "-71.5300")
+        @NotNull(message = "La longitud es obligatoria: elige el punto en el mapa")
+        @Schema(description = "Longitud del punto elegido en el mapa", example = "-71.5300")
         Double lng,
 
         @Schema(description = "URL de la imagen devuelta por POST /api/v1/archivos", nullable = true)

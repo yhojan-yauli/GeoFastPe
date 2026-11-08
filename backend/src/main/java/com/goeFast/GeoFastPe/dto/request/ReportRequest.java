@@ -2,6 +2,7 @@ package com.goeFast.GeoFastPe.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -30,10 +31,12 @@ public record ReportRequest(
         @Schema(description = "Direccion o referencia", example = "Cercado de Arequipa", nullable = true)
         String location,
 
-        @Schema(nullable = true, example = "-16.4090")
+        @NotNull(message = "La latitud es obligatoria: elige el punto en el mapa")
+        @Schema(description = "Latitud del punto elegido en el mapa", example = "-16.4090")
         Double lat,
 
-        @Schema(nullable = true, example = "-71.5374")
+        @NotNull(message = "La longitud es obligatoria: elige el punto en el mapa")
+        @Schema(description = "Longitud del punto elegido en el mapa", example = "-71.5374")
         Double lng,
 
         @Schema(description = "URLs de evidencias (maximo 5)", nullable = true)

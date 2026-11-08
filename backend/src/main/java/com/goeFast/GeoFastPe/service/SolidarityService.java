@@ -133,6 +133,7 @@ public class SolidarityService {
             Validaciones.requerirOpcion("urgency", r.urgency(), Catalogos.URGENCIAS);
         }
         Validaciones.opcionOpcional("status", r.status(), Catalogos.SOLIDARIDAD_ESTADOS);
+        Validaciones.requerirCoordenadas(r.lat(), r.lng());
     }
 
     private void aplicar(SolidarityPost p, SolidarityRequest r) {
@@ -142,7 +143,9 @@ public class SolidarityService {
         p.setDescription(r.description().trim());
         p.setCondition(DONACION.equals(r.tipo()) ? r.condition() : null);
         p.setUrgency(SOLICITUD.equals(r.tipo()) ? r.urgency() : null);
-        p.setLocation(r.location().trim());
+        p.setLocation(Validaciones.texto(r.location()));
+        p.setLat(r.lat());
+        p.setLng(r.lng());
         p.setImage(Validaciones.texto(r.image()));
         if (r.status() != null) {
             p.setStatus(r.status());

@@ -103,6 +103,7 @@ public class SaleService {
         Validaciones.requerirOpcion("condition", r.condition(), Catalogos.VENTA_CONDICIONES);
         Validaciones.requerirOpcion("location", r.location(), Catalogos.DISTRITOS);
         Validaciones.opcionOpcional("status", r.status(), Catalogos.VENTA_ESTADOS);
+        Validaciones.requerirCoordenadas(r.lat(), r.lng());
     }
 
     private void aplicar(SaleItem venta, SaleRequest r) {
@@ -112,6 +113,8 @@ public class SaleService {
         venta.setPrice(r.price());
         venta.setDescription(r.description().trim());
         venta.setLocation(r.location());
+        venta.setLat(r.lat());
+        venta.setLng(r.lng());
         venta.setImage(Validaciones.texto(r.image()));
         if (r.status() != null) {
             venta.setStatus(r.status());

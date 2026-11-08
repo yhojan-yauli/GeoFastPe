@@ -27,7 +27,7 @@ public class MapController {
 
     @GetMapping("/puntos")
     @Operation(summary = "Puntos cercanos",
-            description = "Devuelve los servicios y emergencias con coordenadas dentro del radio, ordenados por distancia. tipo: SERVICIO o EMERGENCIA (opcional).")
+            description = "Devuelve servicios, emergencias, ventas y donaciones/solicitudes con coordenadas dentro del radio, ordenados por distancia. tipo (opcional): SERVICIO, EMERGENCIA, VENTA o SOLIDARIDAD.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Puntos dentro del radio."),
             @ApiResponse(responseCode = "400", description = "Parametros invalidos.")
@@ -39,7 +39,7 @@ public class MapController {
             @RequestParam double lng,
             @Parameter(description = "Radio en metros (100 a 50000)", example = "1000")
             @RequestParam(required = false) Double radio,
-            @Parameter(description = "SERVICIO o EMERGENCIA") @RequestParam(required = false) String tipo) {
+            @Parameter(description = "SERVICIO, EMERGENCIA, VENTA o SOLIDARIDAD") @RequestParam(required = false) String tipo) {
         return mapService.puntos(lat, lng, radio, tipo);
     }
 }

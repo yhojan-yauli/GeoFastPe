@@ -74,8 +74,6 @@ public class EmergencyService {
     private void validar(EmergencyRequest r) {
         Validaciones.requerirOpcion("type", r.type(), Catalogos.EMERGENCIA_TIPOS);
         Validaciones.requerirOpcion("urgency", r.urgency(), Catalogos.URGENCIAS);
-        Validaciones.requerir(Validaciones.texto(r.locationText()) != null || (r.lat() != null && r.lng() != null),
-                "Indica la ubicacion con locationText, o con lat y lng.");
         Validaciones.requerirCoordenadas(r.lat(), r.lng());
         Validaciones.requerir(r.images() == null || r.images().size() <= MAXIMO_IMAGENES,
                 "Puedes adjuntar como maximo 5 imagenes.");

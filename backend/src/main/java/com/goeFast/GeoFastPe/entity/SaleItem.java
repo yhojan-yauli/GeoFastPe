@@ -51,6 +51,10 @@ public class SaleItem {
     @Column(nullable = false, length = 60)
     private String location;
 
+    private Double lat;
+
+    private Double lng;
+
     @Column(length = 500)
     private String image;
 

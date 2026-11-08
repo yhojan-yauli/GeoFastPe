@@ -17,6 +17,8 @@ public record SaleResponse(
         BigDecimal price,
         String description,
         String location,
+        Double lat,
+        Double lng,
         String image,
         String status,
         Instant createdAt,
@@ -27,7 +29,8 @@ public record SaleResponse(
         return new SaleResponse(
                 s.getId(), s.getOwner().getId(), s.getOwner().getName(),
                 s.getName(), s.getCategory(), s.getCondition(), s.getPrice(), s.getDescription(),
-                s.getLocation(), s.getImage(), s.getStatus(), s.getCreatedAt(), s.getUpdatedAt()
+                s.getLocation(), s.getLat(), s.getLng(), s.getImage(), s.getStatus(),
+                s.getCreatedAt(), s.getUpdatedAt()
         );
     }
 }

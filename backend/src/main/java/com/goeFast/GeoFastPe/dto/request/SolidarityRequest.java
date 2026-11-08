@@ -2,6 +2,7 @@ package com.goeFast.GeoFastPe.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 @Schema(description = "Donacion o solicitud de ayuda. Donacion usa condition; solicitud usa urgency.")
@@ -30,10 +31,17 @@ public record SolidarityRequest(
         @Schema(description = "Obligatorio en solicitudes: Alta, Media o Baja", nullable = true)
         String urgency,
 
-        @NotBlank(message = "La ubicacion aproximada es obligatoria")
         @Size(max = 120, message = "La ubicacion no debe superar 120 caracteres")
-        @Schema(description = "Zona aproximada, no la direccion exacta", example = "Distrito de Cayma, Arequipa")
+        @Schema(description = "Referencia opcional (zona aproximada), no la direccion exacta", example = "Distrito de Cayma", nullable = true)
         String location,
+
+        @NotNull(message = "La latitud es obligatoria: elige el punto en el mapa")
+        @Schema(description = "Latitud del punto elegido en el mapa", example = "-16.3989")
+        Double lat,
+
+        @NotNull(message = "La longitud es obligatoria: elige el punto en el mapa")
+        @Schema(description = "Longitud del punto elegido en el mapa", example = "-71.5350")
+        Double lng,
 
         @Schema(description = "Disponible o Cerrada. Si se omite se mantiene Disponible.", nullable = true)
         String status,

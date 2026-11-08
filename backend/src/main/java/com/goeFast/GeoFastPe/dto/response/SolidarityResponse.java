@@ -17,6 +17,8 @@ public record SolidarityResponse(
         String condition,
         String urgency,
         String location,
+        Double lat,
+        Double lng,
         String image,
         String status,
         boolean favorito,
@@ -28,8 +30,8 @@ public record SolidarityResponse(
         return new SolidarityResponse(
                 p.getId(), p.getOwner().getId(), p.getOwner().getName(),
                 p.getTipo(), p.getTitle(), p.getCategory(), p.getDescription(), p.getCondition(),
-                p.getUrgency(), p.getLocation(), p.getImage(), p.getStatus(), favorito,
-                p.getCreatedAt(), p.getUpdatedAt()
+                p.getUrgency(), p.getLocation(), p.getLat(), p.getLng(), p.getImage(), p.getStatus(),
+                favorito, p.getCreatedAt(), p.getUpdatedAt()
         );
     }
 }

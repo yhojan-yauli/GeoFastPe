@@ -53,8 +53,12 @@ public class SolidarityPost {
     @Column(length = 10)
     private String urgency;
 
-    @Column(nullable = false, length = 120)
+    @Column(length = 120)
     private String location;
+
+    private Double lat;
+
+    private Double lng;
 
     @Column(length = 500)
     private String image;

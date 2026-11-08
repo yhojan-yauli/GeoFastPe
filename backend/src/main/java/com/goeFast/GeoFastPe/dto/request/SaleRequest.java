@@ -37,6 +37,14 @@ public record SaleRequest(
         @Schema(description = "Distrito donde se encuentra el producto", example = "Cayma")
         String location,
 
+        @NotNull(message = "La latitud es obligatoria: elige el punto en el mapa")
+        @Schema(description = "Latitud del punto elegido en el mapa", example = "-16.3989")
+        Double lat,
+
+        @NotNull(message = "La longitud es obligatoria: elige el punto en el mapa")
+        @Schema(description = "Longitud del punto elegido en el mapa", example = "-71.5350")
+        Double lng,
+
         @Schema(description = "Disponible o Vendido. Si se omite se mantiene Disponible.", nullable = true)
         String status,
 

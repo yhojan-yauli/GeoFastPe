@@ -73,8 +73,6 @@ public class ReportService {
     private void validar(ReportRequest r) {
         Validaciones.requerirOpcion("category", r.category(), Catalogos.REPORTE_CATEGORIAS);
         Validaciones.requerirOpcion("priority", r.priority(), Catalogos.PRIORIDADES);
-        Validaciones.requerir(Validaciones.texto(r.location()) != null || (r.lat() != null && r.lng() != null),
-                "Indica la ubicacion con location, o con lat y lng.");
         Validaciones.requerirCoordenadas(r.lat(), r.lng());
         Validaciones.requerir(r.images() == null || r.images().size() <= MAXIMO_IMAGENES,
                 "Puedes adjuntar como maximo 5 imagenes.");
