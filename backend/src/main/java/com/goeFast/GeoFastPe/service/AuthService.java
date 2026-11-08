@@ -1,5 +1,6 @@
 package com.goeFast.GeoFastPe.service;
 
+import com.goeFast.GeoFastPe.dto.request.ChangePasswordRequest;
 import com.goeFast.GeoFastPe.dto.request.LoginRequest;
 import com.goeFast.GeoFastPe.dto.request.RegisterRequest;
 import com.goeFast.GeoFastPe.dto.response.AuthResponse;
@@ -62,7 +63,7 @@ public class AuthService {
         }
 
         User user = new User();
-        user.setFullName(request.fullName().trim());
+        user.setName(request.name().trim());
         user.setEmail(email);
         user.setPhone(phone);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
@@ -92,6 +93,19 @@ public class AuthService {
         userRepository.save(user);
 
         return buildAuthResponse(user);
+    }
+
+    @Transactional
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "Usuario no encontrado."));
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PASSWORD", "La contrasena actual no es correcta.");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
     }
 
     private java.util.Optional<User> findByIdentifier(String identifier) {

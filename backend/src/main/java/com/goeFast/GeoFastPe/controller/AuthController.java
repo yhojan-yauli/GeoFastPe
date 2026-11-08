@@ -1,5 +1,6 @@
 package com.goeFast.GeoFastPe.controller;
 
+import com.goeFast.GeoFastPe.dto.request.ChangePasswordRequest;
 import com.goeFast.GeoFastPe.dto.request.LoginRequest;
 import com.goeFast.GeoFastPe.dto.request.RegisterRequest;
 import com.goeFast.GeoFastPe.dto.response.AuthResponse;
@@ -16,6 +17,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -82,5 +84,22 @@ public class AuthController {
     })
     public UserResponse me(@AuthenticationPrincipal UserPrincipal principal) {
         return userService.getById(principal.id());
+    }
+
+    @PatchMapping("/password")
+    @SecurityRequirement(name = "bearerAuth")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Cambiar contrasena",
+            description = "Cambia la contrasena del usuario autenticado. Requiere la contrasena actual."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Contrasena cambiada."),
+            @ApiResponse(responseCode = "400", description = "La contrasena actual no es correcta o la nueva no cumple las reglas."),
+            @ApiResponse(responseCode = "401", description = "Falta el token o es invalido/expirado.")
+    })
+    public void cambiarPassword(@AuthenticationPrincipal UserPrincipal principal,
+                                @Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(principal.id(), request);
     }
 }

@@ -32,12 +32,23 @@ public class OpenApiConfig {
                                 Si ya tienes cuenta, usa **POST /api/v1/auth/login** enviando
                                 `identifier` (correo o telefono) y `password`.
 
-                                ## Endpoints principales
-                                - **POST /api/v1/auth/register**: crear cuenta y obtener token.
-                                - **POST /api/v1/auth/login**: iniciar sesion y obtener token.
-                                - **GET /api/v1/auth/me**: ver el perfil del usuario autenticado.
-                                - **GET/PATCH /api/v1/users/me**: ver o actualizar el perfil.
-                                - **GET/PATCH /api/v1/admin/users**: gestion de usuarios (solo ADMIN).
+                                ## Modulos
+                                - **Autenticacion y perfil**: /api/v1/auth y /api/v1/users (registro, login, perfil, contrasena, estadisticas).
+                                - **Catalogos**: /api/v1/catalogos. Valores validos para los formularios (categorias, distritos, ciudades).
+                                - **Archivos**: /api/v1/archivos. Sube una imagen y usa la url devuelta en image, images o avatar.
+                                - **Mapa**: /api/v1/mapa/puntos. Servicios y emergencias dentro de un radio.
+                                - **Servicios locales**: /api/v1/servicios.
+                                - **Ventas locales**: /api/v1/ventas (incluye contactar al vendedor).
+                                - **Solidaridad**: /api/v1/solidaridad (donaciones, solicitudes y favoritos).
+                                - **Emergencias (SOS)**: /api/v1/emergencias.
+                                - **Reportes comunitarios**: /api/v1/reportes.
+                                - **Eventos comunitarios**: /api/v1/eventos (participar y tabs).
+                                - **Mensajes**: /api/v1/conversaciones.
+                                - **Geo**: /api/v1/geo (buscar lugares, clima y rutas).
+                                - **Administracion**: /api/v1/admin/users (solo ADMIN).
+
+                                Lectura publica: catalogos, mapa, servicios, ventas, solidaridad, emergencias, reportes, eventos, geo y archivos.
+                                Crear, editar, borrar, participar y mensajes requieren token. Cambiar el estado de emergencias y reportes requiere ADMIN.
                                 """)
                         .version("v1"))
                 .components(new Components().addSecuritySchemes(BEARER_AUTH,

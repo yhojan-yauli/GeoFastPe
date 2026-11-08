@@ -62,6 +62,19 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/emergencias/*/estado", "/api/v1/reportes/*/estado").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/*/mios", "/api/v1/solidaridad/favoritos").authenticated()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/catalogos",
+                                "/api/v1/archivos/**",
+                                "/api/v1/mapa/**",
+                                "/api/v1/geo/**",
+                                "/api/v1/servicios/**",
+                                "/api/v1/ventas/**",
+                                "/api/v1/solidaridad/**",
+                                "/api/v1/emergencias/**",
+                                "/api/v1/reportes/**",
+                                "/api/v1/eventos/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -28,7 +28,16 @@ public class User {
     private Long id;
 
     @Column(name = "full_name", nullable = false, length = 120)
-    private String fullName;
+    private String name;
+
+    @Column(length = 80)
+    private String city;
+
+    @Column(length = 240)
+    private String bio;
+
+    @Column(length = 500)
+    private String avatar;
 
     /**
      * Correo electronico. Es opcional, pero el registro exige correo o telefono.

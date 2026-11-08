@@ -12,7 +12,7 @@ public record RegisterRequest(
         @NotBlank(message = "El nombre es obligatorio")
         @Size(max = 120, message = "El nombre no debe superar 120 caracteres")
         @Schema(description = "Nombre completo del usuario", example = "Juan Perez")
-        String fullName,
+        String name,
 
         @Email(message = "El correo no tiene un formato valido")
         @Size(max = 150, message = "El correo no debe superar 150 caracteres")
@@ -26,8 +26,10 @@ public record RegisterRequest(
         String phone,
 
         @NotBlank(message = "La contrasena es obligatoria")
-        @Size(min = 8, max = 64, message = "La contrasena debe tener entre 8 y 64 caracteres")
-        @Schema(description = "Contrasena de la cuenta", example = "miClave123")
+        @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z\\d]).{8,64}$",
+                message = "La contrasena debe tener entre 8 y 64 caracteres, al menos una letra, un numero y un caracter especial")
+        @Schema(description = "Minimo 8 caracteres, con al menos una letra, un numero y un caracter especial",
+                example = "miClave123!")
         String password
 ) {
 }

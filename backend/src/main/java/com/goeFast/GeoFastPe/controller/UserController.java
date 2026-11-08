@@ -1,6 +1,7 @@
 package com.goeFast.GeoFastPe.controller;
 
 import com.goeFast.GeoFastPe.dto.request.UpdateProfileRequest;
+import com.goeFast.GeoFastPe.dto.response.ProfileStatsResponse;
 import com.goeFast.GeoFastPe.dto.response.UserResponse;
 import com.goeFast.GeoFastPe.security.UserPrincipal;
 import com.goeFast.GeoFastPe.service.UserService;
@@ -55,5 +56,18 @@ public class UserController {
     public UserResponse updateProfile(@AuthenticationPrincipal UserPrincipal principal,
                                       @Valid @RequestBody UpdateProfileRequest request) {
         return userService.updateProfile(principal.id(), request);
+    }
+
+    @GetMapping("/me/estadisticas")
+    @Operation(
+            summary = "Mis estadisticas",
+            description = "Cuenta tus publicaciones, donaciones y eventos (creados y asistidos)."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Estadisticas del usuario."),
+            @ApiResponse(responseCode = "401", description = "Falta el token o es invalido/expirado.")
+    })
+    public ProfileStatsResponse estadisticas(@AuthenticationPrincipal UserPrincipal principal) {
+        return userService.estadisticas(principal.id());
     }
 }

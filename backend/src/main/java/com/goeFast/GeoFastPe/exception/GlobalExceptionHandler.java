@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
@@ -98,6 +99,16 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
+                .body(ApiErrorResponse.of(
+                        HttpStatus.CONTENT_TOO_LARGE.value(),
+                        "FILE_TOO_LARGE",
+                        "La imagen no debe superar 5 MB."
+                ));
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleResourceNotFound(NoResourceFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -140,3 +151,4 @@ public class GlobalExceptionHandler {
                 .body(ApiErrorResponse.of(HttpStatus.BAD_REQUEST.value(), code, message, details));
     }
 }
+

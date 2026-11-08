@@ -38,6 +38,7 @@ out/
 
 ### GeoFastPe ###
 data/
+uploads/
 *.log
 .env
 **/firebase-service-account.json
