@@ -9,6 +9,7 @@ import java.time.Instant;
 public record MessageResponse(
         Long id,
         String author,
+        String authorUsername,
         String text,
         boolean mine,
         Instant createdAt
@@ -16,8 +17,13 @@ public record MessageResponse(
 
     public static MessageResponse from(ChatMessage m, Long currentUserId) {
         return new MessageResponse(
-                m.getId(), m.getSender().getName(), m.getText(),
-                m.getSender().getId().equals(currentUserId), m.getCreatedAt()
+                m.getId(),
+                m.getSender().getName(),
+                m.getSender().getUsername(),
+                m.getText(),
+                m.getSender().getId().equals(currentUserId),
+                m.getCreatedAt()
         );
     }
+
 }

@@ -53,8 +53,67 @@ public class ChatService {
                 .toList();
     }
 
+    @Transactional
+    public List<ConversationResponse> gruposPublicos(Long userId, String categoria, String q) {
+        crearCanalesBaseSiFaltan(userId);
+        return conversationRepository.findAll().stream()
+                .filter(Conversation::isPublicGroup)
+                .filter(c -> Filtros.igualOpcional(categoria, c.getCategory()))
+                .filter(c -> Filtros.coincide(q, c.getTitle(), c.getSubtitle()))
+                .map(c -> {
+                    int unread = memberRepository.findByConversationIdAndUserId(c.getId(), userId).map(ConversationMember::getUnread).orElse(0);
+                    return ConversationResponse.from(c, messageRepository.findTopByConversationIdOrderByCreatedAtDesc(c.getId()).map(ChatMessage::getText).orElse("Sin mensajes"), unread, (int) memberRepository.countByConversationId(c.getId()));
+                }).sorted(Comparator.comparing(ConversationResponse::time).reversed()).toList();
+    }
+
+
+    /**
+     * Crea los canales comunitarios base la primera vez que un usuario abre Mensajes.
+     * De esta forma la pantalla nunca aparece vacía en una instalación nueva.
+     */
+    @Transactional
+    void crearCanalesBaseSiFaltan(Long userId) {
+        for (String categoria : Catalogos.CHAT_CATEGORIAS) {
+            boolean existe = conversationRepository.findAll().stream()
+                    .anyMatch(c -> c.isPublicGroup() && categoria.equals(c.getCategory()));
+            if (existe) continue;
+
+            Conversation c = new Conversation();
+            c.setTitle("Canal " + categoria);
+            c.setSubtitle("Mensajes públicos de la categoría " + categoria + ". Únete para participar.");
+            c.setCategory(categoria);
+            c.setCreatedBy(userRepository.getReferenceById(userId));
+            c.setPublicGroup(true);
+            conversationRepository.save(c);
+        }
+    }
+
+    @Transactional
+    public ConversationResponse crearGrupoPublico(Long userId, ConversationRequest request) {
+        Validaciones.requerirOpcion("category", request.category(), Catalogos.CHAT_CATEGORIAS);
+        Conversation c = new Conversation();
+        c.setTitle(request.title().trim()); c.setSubtitle(Validaciones.texto(request.subtitle())); c.setCategory(request.category());
+        c.setCreatedBy(userRepository.getReferenceById(userId)); c.setPublicGroup(true); conversationRepository.save(c);
+        ConversationMember m = crearMiembro(c, userId);
+        return ConversationResponse.from(c, "Grupo creado. Sé el primero en escribir.", m.getUnread(), 1);
+    }
+
+    @Transactional
+    public ConversationResponse unirseGrupo(Long userId, Long conversationId) {
+        Conversation c = conversationRepository.findById(conversationId).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CONVERSATION_NOT_FOUND", "Grupo no encontrado."));
+        if (!c.isPublicGroup()) throw new ApiException(HttpStatus.BAD_REQUEST, "PRIVATE_CONVERSATION", "Esta conversación es privada.");
+        ConversationMember m = memberRepository.findByConversationIdAndUserId(conversationId, userId).orElseGet(() -> crearMiembro(c, userId));
+        return respuesta(m);
+    }
+
     public List<MessageResponse> mensajes(Long conversacionId, Long userId) {
-        exigirMiembro(conversacionId, userId);
+        Conversation conversacion = conversationRepository.findById(conversacionId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CONVERSATION_NOT_FOUND", "Conversacion no encontrada."));
+        // Los canales públicos se pueden leer sin pertenecer al grupo.
+        // Para escribir sigue siendo obligatorio unirse.
+        if (!conversacion.isPublicGroup()) {
+            exigirMiembro(conversacionId, userId);
+        }
         return messageRepository.findAllByConversationIdOrderByCreatedAtAsc(conversacionId).stream()
                 .map(m -> MessageResponse.from(m, userId))
                 .toList();
@@ -70,7 +129,13 @@ public class ChatService {
         conversacion.setCreatedBy(userRepository.getReferenceById(userId));
         conversationRepository.save(conversacion);
         ConversationMember miembro = crearMiembro(conversacion, userId);
-        return ConversationResponse.from(conversacion, "Sin mensajes", miembro.getUnread());
+        if (request.recipientId() != null && !request.recipientId().equals(userId)) {
+            if (!userRepository.existsById(request.recipientId())) {
+                throw new ApiException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "El usuario destinatario no existe.");
+            }
+            crearMiembro(conversacion, request.recipientId());
+        }
+        return ConversationResponse.from(conversacion, "Sin mensajes", miembro.getUnread(), (int) memberRepository.countByConversationId(conversacion.getId()));
     }
 
     @Transactional
@@ -125,7 +190,7 @@ public class ChatService {
         conversationRepository.save(conversacion);
         ConversationMember miembroComprador = crearMiembro(conversacion, compradorId);
         crearMiembro(conversacion, vendedorId);
-        return ConversationResponse.from(conversacion, "Sin mensajes", miembroComprador.getUnread());
+        return ConversationResponse.from(conversacion, "Sin mensajes", miembroComprador.getUnread(), (int) memberRepository.countByConversationId(conversacion.getId()));
     }
 
     private ConversationMember crearMiembro(Conversation conversacion, Long userId) {
@@ -149,6 +214,6 @@ public class ChatService {
         String vista = messageRepository.findTopByConversationIdOrderByCreatedAtDesc(conversacion.getId())
                 .map(ChatMessage::getText)
                 .orElse("Sin mensajes");
-        return ConversationResponse.from(conversacion, vista, miembro.getUnread());
+        return ConversationResponse.from(conversacion, vista, miembro.getUnread(), (int) memberRepository.countByConversationId(conversacion.getId()));
     }
 }

@@ -16,7 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/mapa")
-@Tag(name = "Mapa", description = "Puntos del mapa vecinal (servicios y emergencias) dentro de un radio. Publico.")
+@Tag(name = "Mapa", description = "Puntos del mapa vecinal (servicios, emergencias, eventos, reportes, ventas y solidaridad) dentro de un radio. Publico.")
 public class MapController {
 
     private final MapService mapService;
@@ -27,7 +27,7 @@ public class MapController {
 
     @GetMapping("/puntos")
     @Operation(summary = "Puntos cercanos",
-            description = "Devuelve servicios, emergencias, ventas y donaciones/solicitudes con coordenadas dentro del radio, ordenados por distancia. tipo (opcional): SERVICIO, EMERGENCIA, VENTA o SOLIDARIDAD.")
+            description = "Devuelve servicios, emergencias, ventas y donaciones/solicitudes con coordenadas dentro del radio, ordenados por distancia. tipo (opcional): SERVICIO, EMERGENCIA, VENTA, SOLIDARIDAD, EVENTO o REPORTE.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Puntos dentro del radio."),
             @ApiResponse(responseCode = "400", description = "Parametros invalidos.")
@@ -39,7 +39,7 @@ public class MapController {
             @RequestParam double lng,
             @Parameter(description = "Radio en metros (100 a 50000)", example = "1000")
             @RequestParam(required = false) Double radio,
-            @Parameter(description = "SERVICIO, EMERGENCIA, VENTA o SOLIDARIDAD") @RequestParam(required = false) String tipo) {
+            @Parameter(description = "SERVICIO, EMERGENCIA, VENTA, SOLIDARIDAD, EVENTO o REPORTE") @RequestParam(required = false) String tipo) {
         return mapService.puntos(lat, lng, radio, tipo);
     }
 }

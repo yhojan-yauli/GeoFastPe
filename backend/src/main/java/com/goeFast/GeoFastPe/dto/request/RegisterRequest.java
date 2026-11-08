@@ -14,6 +14,11 @@ public record RegisterRequest(
         @Schema(description = "Nombre completo del usuario", example = "Juan Perez")
         String name,
 
+        @jakarta.validation.constraints.NotBlank(message = "El nombre de usuario es obligatorio")
+        @Pattern(regexp = "^[A-Za-z0-9_.-]{3,40}$", message = "El nombre de usuario debe tener 3 a 40 caracteres y solo letras, numeros, punto, guion o guion bajo")
+        @Schema(description = "Nombre de usuario publico", example = "juanperez")
+        String username,
+
         @Email(message = "El correo no tiene un formato valido")
         @Size(max = 150, message = "El correo no debe superar 150 caracteres")
         @Schema(description = "Correo electronico (opcional si envias telefono)",

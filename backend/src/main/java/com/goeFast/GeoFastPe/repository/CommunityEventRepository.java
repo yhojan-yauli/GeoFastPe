@@ -8,5 +8,7 @@ import java.util.List;
 public interface CommunityEventRepository extends JpaRepository<CommunityEvent, Long> {
 
     List<CommunityEvent> findAllByOwnerId(Long ownerId);
+
+    List<CommunityEvent> findAllByOrderByCreatedAtDesc();
 }
 

@@ -10,6 +10,7 @@ public record ServiceResponse(
         Long id,
         Long ownerId,
         String ownerName,
+        String ownerUsername,
         String title,
         String category,
         String type,
@@ -27,7 +28,7 @@ public record ServiceResponse(
 
     public static ServiceResponse from(ServiceListing s) {
         return new ServiceResponse(
-                s.getId(), s.getOwner().getId(), s.getOwner().getName(),
+                s.getId(), s.getOwner().getId(), s.getOwner().getName(), s.getOwner().getUsername(),
                 s.getTitle(), s.getCategory(), s.getType(), s.getDescription(), s.getPhone(),
                 s.getLocationType(), s.getAddress(), s.getLatitude(), s.getLongitude(),
                 s.getAvailability(), s.getImage(), s.getCreatedAt(), s.getUpdatedAt()

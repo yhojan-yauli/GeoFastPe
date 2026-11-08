@@ -36,6 +36,9 @@ public class Conversation {
     @Column(nullable = false, length = 20)
     private String category;
 
+    @Column(name = "public_group", nullable = false)
+    private boolean publicGroup = false;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "created_by_id", nullable = false)
     private User createdBy;

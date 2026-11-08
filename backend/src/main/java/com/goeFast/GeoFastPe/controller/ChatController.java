@@ -56,6 +56,22 @@ public class ChatController {
         return chatService.crear(principal.id(), request);
     }
 
+    @GetMapping("/publicas")
+    public List<ConversationResponse> gruposPublicos(@AuthenticationPrincipal UserPrincipal principal, @RequestParam(required = false) String categoria, @RequestParam(required = false) String q) {
+        return chatService.gruposPublicos(principal.id(), categoria, q);
+    }
+
+    @PostMapping("/publicas")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ConversationResponse crearGrupoPublico(@AuthenticationPrincipal UserPrincipal principal, @Valid @RequestBody ConversationRequest request) {
+        return chatService.crearGrupoPublico(principal.id(), request);
+    }
+
+    @PostMapping("/{id}/unirse")
+    public ConversationResponse unirse(@AuthenticationPrincipal UserPrincipal principal, @PathVariable Long id) {
+        return chatService.unirseGrupo(principal.id(), id);
+    }
+
     @GetMapping("/{id}/mensajes")
     @Operation(summary = "Ver mensajes", description = "Mensajes de la conversacion en orden cronologico. Debes ser miembro.")
     @ApiResponses({

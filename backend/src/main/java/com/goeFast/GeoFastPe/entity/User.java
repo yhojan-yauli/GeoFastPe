@@ -30,6 +30,9 @@ public class User {
     @Column(name = "full_name", nullable = false, length = 120)
     private String name;
 
+    @Column(unique = true, length = 40)
+    private String username;
+
     @Column(length = 80)
     private String city;
 
