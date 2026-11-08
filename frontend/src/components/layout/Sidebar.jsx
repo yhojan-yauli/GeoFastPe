@@ -1,6 +1,7 @@
 
 import { useAuth } from '../../features/auth/AuthContext.jsx';
 import { canAccessSection } from '../../features/auth/permissions.js';
+import './Sidebar.css';
 
 import {
   House,
@@ -17,80 +18,42 @@ import {
 } from 'lucide-react';
 
 // ==========================================
-// MENÚ DE NAVEGACIÓN
+// CONFIGURACIÓN DEL MENÚ
 // ==========================================
+
 const menuItems = [
-  {
-    label: 'Inicio',
-    icon: House,
-    path: '/',
-    category: 'Todos'
-  },
-  {
-    label: 'Mapa Vecinal',
-    icon: MapPinned,
-    path: '/mapa',
-    category: 'Todos'
-  },
-  {
-    label: 'Servicios',
-    icon: BriefcaseBusiness,
-    path: '/servicios',
-    category: 'Servicios'
-  },
-  {
-    label: 'Ventas',
-    icon: ShoppingCart,
-    path: '/ventas',
-    category: 'Ventas'
-  },
-  {
-    label: 'Solidaridad',
-    icon: HeartHandshake,
-    path: '/solidaridad',
-    category: 'Solidaridad'
-  },
-  {
-    label: 'Emergencias (SOS)',
-    icon: Siren,
-    path: '/emergencias',
-    category: 'Emergencia'
-  },
-  {
-    label: 'Reportes',
-    icon: Flag,
-    path: '/reportes',
-    category: 'Reportes'
-  },
-  {
-    label: 'Eventos',
-    icon: CalendarDays,
-    path: '/eventos',
-    category: 'Eventos'
-  },
-  {
-    label: 'Mensajes',
-    icon: MessageCircle,
-    path: '/mensajes',
-    category: 'Mensajes'
-  },
-  {
-    label: 'Mi Perfil',
-    icon: UserRound,
-    path: '/perfil',
-    category: 'Mi Perfil'
-  },
-  {
-    label: 'Configuración',
-    icon: Settings,
-    path: '/configuracion',
-    category: 'Configuración'
-  }
+  { label: 'Inicio', icon: House, path: '/', category: 'Todos' },
+  { label: 'Mapa Vecinal', icon: MapPinned, path: '/mapa', category: 'Todos' },
+  { label: 'Servicios', icon: BriefcaseBusiness, path: '/servicios', category: 'Servicios' },
+  { label: 'Ventas', icon: ShoppingCart, path: '/ventas', category: 'Ventas' },
+  { label: 'Solidaridad', icon: HeartHandshake, path: '/solidaridad', category: 'Solidaridad' },
+  { label: 'Emergencias (SOS)', icon: Siren, path: '/emergencias', category: 'Emergencia' },
+  { label: 'Reportes', icon: Flag, path: '/reportes', category: 'Reportes' },
+  { label: 'Eventos', icon: CalendarDays, path: '/eventos', category: 'Eventos' },
+  { label: 'Mensajes', icon: MessageCircle, path: '/mensajes', category: 'Mensajes' },
+  { label: 'Mi Perfil', icon: UserRound, path: '/perfil', category: 'Mi Perfil' },
+  { label: 'Configuración', icon: Settings, path: '/configuracion', category: 'Configuración' }
+];
+
+// ==========================================
+// SECCIONES PÚBLICAS
+// ==========================================
+
+const PUBLIC_SECTIONS = [
+  'Inicio',
+  'Mapa Vecinal',
+  'Servicios',
+  'Ventas',
+  'Solidaridad',
+  'Emergencias (SOS)',
+  'Reportes',
+  'Eventos'
 ];
 
 // ==========================================
 // COMPONENTE SIDEBAR
 // ==========================================
+
 export default function Sidebar({
   section,
   onSelectSection,
@@ -101,125 +64,154 @@ export default function Sidebar({
   // ==========================================
   // CONTROL DE NAVEGACIÓN
   // ==========================================
+
   const handleNavigation = (name, category) => {
-
-    // Secciones públicas del mapa
-    const publicSections = [
-      'Inicio',
-      'Mapa Vecinal',
-      'Servicios',
-      'Ventas',
-      'Solidaridad',
-      'Emergencias (SOS)',
-      'Reportes',
-      'Eventos'
-    ];
-
-    // Permitir navegación pública
-    if (publicSections.includes(name)) {
-      onSelectSection(name, category);
+    // Las secciones públicas no requieren login.
+    if (PUBLIC_SECTIONS.includes(name)) {
+      onSelectSection?.(name, category);
       return;
     }
 
-    // Proteger las secciones privadas
+    // Las secciones privadas requieren autenticación.
     if (!canAccessSection(name, isAuthenticated)) {
-      onRequireLogin(name);
+      onRequireLogin?.(name);
       return;
     }
 
-    onSelectSection(name, category);
+    onSelectSection?.(name, category);
+  };
+
+  // ==========================================
+  // DETECTAR SECCIÓN ACTIVA
+  // ==========================================
+
+  const isActiveSection = (label) => {
+    if (section === label) return true;
+
+    // Compatibilidad con el nombre interno
+    // de Emergencias utilizado por App.jsx.
+    if (
+      label === 'Emergencias (SOS)' &&
+      section === 'Emergencias'
+    ) {
+      return true;
+    }
+
+    return false;
   };
 
   // ==========================================
   // INTERFAZ DEL SIDEBAR
   // ==========================================
+
   return (
-    <aside className="left-sidebar">
+    <aside className="left-sidebar gf-sidebar">
 
       {/* =====================================
-          LOGOTIPO
+          ENCABEZADO GEOFASTPE
       ===================================== */}
-      <div className="brand">
-        <span className="brand-mark">
-          G
-        </span>
 
-        <span>
-          GeoFast<span>Pe</span>
-        </span>
+      <div className="gf-brand">
+        <div className="gf-brand-name">
+          <span className="gf-brand-geo">
+            GeoFast
+          </span>
+
+          <span className="gf-brand-pe">
+            Pe
+          </span>
+        </div>
       </div>
 
       {/* =====================================
-          TÍTULO DEL MENÚ
+          CONTENIDO DEL MENÚ
       ===================================== */}
-      <div className="nav-caption">
-        MENÚ PRINCIPAL
+
+      <div className="gf-sidebar-content">
+
+        <div className="gf-nav-caption">
+          MENÚ PRINCIPAL
+        </div>
+
+        <nav
+          className="gf-navigation"
+          aria-label="Menú principal"
+        >
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isSelected = isActiveSection(item.label);
+
+            return (
+              <button
+                key={item.path}
+                type="button"
+                className={`gf-nav-item ${
+                  isSelected ? 'selected' : ''
+                }`}
+                onClick={() =>
+                  handleNavigation(
+                    item.label,
+                    item.category
+                  )
+                }
+                title={item.label}
+                aria-current={
+                  isSelected ? 'page' : undefined
+                }
+              >
+
+                {/* ICONO */}
+                <span className="gf-nav-icon">
+                  <Icon
+                    size={20}
+                    strokeWidth={1.8}
+                  />
+                </span>
+
+                {/* NOMBRE DEL MÓDULO */}
+                <span className="gf-nav-label">
+                  {item.label}
+                </span>
+
+                {/* INDICADOR ACTIVO */}
+                {isSelected && (
+                  <span
+                    className="gf-nav-active"
+                    aria-hidden="true"
+                  />
+                )}
+
+              </button>
+            );
+          })}
+        </nav>
+
       </div>
 
       {/* =====================================
-          OPCIONES DE NAVEGACIÓN
+          DECORACIÓN INFERIOR
+          TODO: conservar o mejorar el fondo
+          de la Catedral de Arequipa desde CSS.
       ===================================== */}
-      <nav>
-        {menuItems.map((item) => {
 
-          const Icon = item.icon;
-
-          const isSelected =
-            section === item.label;
-
-          return (
-            <button
-              key={item.path}
-              type="button"
-              className={`nav-item ${
-                isSelected ? 'selected' : ''
-              }`}
-              onClick={() => {
-                handleNavigation(
-                  item.label,
-                  item.category
-                );
-              }}
-              title={item.label}
-            >
-
-              {/* ICONO */}
-              <span className="nav-icon">
-                <Icon
-                  size={20}
-                  strokeWidth={1.8}
-                />
-              </span>
-
-              {/* NOMBRE */}
-              <span>
-                {item.label}
-              </span>
-
-              {/* INDICADOR ACTIVO */}
-              {isSelected && (
-                <span className="nav-active" />
-              )}
-
-            </button>
-          );
-        })}
-      </nav>
+      <div
+        className="gf-scenery"
+        aria-hidden="true"
+      />
 
       {/* =====================================
-          PARTE INFERIOR DEL SIDEBAR
+          PIE DE PÁGINA
       ===================================== */}
-      <div className="sidebar-bottom">
 
-        <div className="avatar">
+      <div className="gf-sidebar-bottom">
+
+        <div className="gf-avatar">
           GF
         </div>
 
-        <div>
+        <div className="gf-footer-info">
           <strong>GeoFastPe</strong>
-          <small>
-            Plataforma comunitaria
-          </small>
+          <small>Plataforma comunitaria</small>
         </div>
 
       </div>
@@ -227,3 +219,28 @@ export default function Sidebar({
     </aside>
   );
 }
+
+// ==========================================
+// FUTURAS IMPLEMENTACIONES
+// ==========================================
+
+// TODO (navegación):
+// Integrar rutas reales si se incorpora
+// React Router. Actualmente la navegación
+// depende de App.jsx mediante callbacks.
+
+// TODO (autenticación):
+// Mostrar indicadores visuales de acceso
+// restringido en Mensajes, Mi Perfil
+// y Configuración.
+
+// TODO (notificaciones):
+// Agregar contador de mensajes no leídos
+// cuando el backend proporcione ese dato.
+
+// TODO (mapa):
+// Mantener sincronizada la categoría activa
+// con los filtros del motor GeoFastPe.
+
+// TODO (responsive):
+// Incorporar menú colapsable para móviles.

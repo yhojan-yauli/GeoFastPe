@@ -1,88 +1,46 @@
-import { useMemo } from 'react';
 import AuthHeader from '../../features/auth/AuthHeader.jsx';
 
-// ==========================================
-// PLANTILLAS DE OTRAS SECCIONES
-// ==========================================
-const templates = {
-  Reportes: [
-    {
-      title: 'Nuevo reporte ciudadano',
-      detail: 'Describe una incidencia en tu zona',
-      action: 'Crear reporte'
-    },
-    {
-      title: 'Mis reportes',
-      detail: 'Consulta el estado de tus reportes',
-      action: 'Ver reportes'
-    }
-  ],
+const PRIVATE_SECTIONS = ['Mensajes', 'Mi Perfil', 'Configuración'];
 
-  Eventos: [
-    {
-      title: 'Eventos cercanos',
-      detail: 'Actividades y convocatorias dentro del área',
-      action: 'Explorar eventos'
-    },
-    {
-      title: 'Publicar evento',
-      detail: 'Comparte una actividad con tu comunidad',
-      action: 'Crear evento'
-    }
-  ],
+const iconFor = (type) => type === 'Solidaridad' ? '🤝' : '📍';
 
-  Mensajes: [
-    {
-      title: 'Bandeja de entrada',
-      detail: 'Tus conversaciones aparecerán aquí',
-      action: 'Abrir mensajes'
-    },
-    {
-      title: 'Solicitudes',
-      detail: 'Mensajes de nuevos contactos',
-      action: 'Ver solicitudes'
-    }
-  ],
-
-  'Mi Perfil': [
-    {
-      title: 'Información personal',
-      detail: 'Administra tus datos y foto de perfil',
-      action: 'Editar perfil'
-    },
-    {
-      title: 'Actividad',
-      detail: 'Historial de publicaciones y solicitudes',
-      action: 'Ver actividad'
-    }
-  ],
-
-  'Configuración': [
-    {
-      title: 'Preferencias',
-      detail: 'Notificaciones, privacidad y accesibilidad',
-      action: 'Administrar'
-    },
-    {
-      title: 'Cuenta y seguridad',
-      detail: 'Contraseña y sesiones activas',
-      action: 'Configurar cuenta'
-    }
-  ]
+const serviceIcon = (type) => {
+  const value = String(type || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (value.includes('electric')) return '⚡';
+  if (value.includes('gasfiter') || value.includes('plomer')) return '🔧';
+  if (value.includes('comput') || value.includes('tecnolog')) return '💻';
+  if (value.includes('limpieza')) return '🧹';
+  if (value.includes('carpinter')) return '🪚';
+  if (value.includes('jardiner')) return '🌱';
+  return '🛠️';
 };
 
-// ==========================================
-// ICONOS SEGÚN EL TIPO DE PUBLICACIÓN
-// ==========================================
-const iconFor = (type) => {
-  if (type === 'Emergencia') return '!';
-  if (type === 'Solidaridad') return '♥';
-  return '⌂';
+const solidarityIcon = (point) => {
+  const value = String(point.category || point.subtype || point.type || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return value.includes('solicitud') || value.includes('ayuda') || value.includes('necesit') ? '🤝' : '🎁';
 };
 
-// ==========================================
-// COMPONENTE PRINCIPAL
-// ==========================================
+const formatDistance = (distance) => {
+  const value = Number(distance);
+  return Number.isFinite(value) ? `${(value / 1000).toFixed(1)} km` : 'Distancia no disponible';
+};
+
+function emergencyIcon(type) {
+  const value = String(type || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (value.includes('incendio') || value.includes('fuego')) return '🔥';
+  if (value.includes('accidente') || value.includes('choque')) return '🚗';
+  if (value.includes('medica') || value.includes('salud')) return '🚑';
+  if (value.includes('inundacion')) return '🌊';
+  if (value.includes('robo') || value.includes('asalto')) return '🚨';
+  if (value.includes('sismo') || value.includes('terremoto')) return 'ðŸšï¸';
+
+  return 'âš ï¸';
+}
+
 export default function SidePanel({
   section,
   services = [],
@@ -90,135 +48,230 @@ export default function SidePanel({
   onRadiusChange,
   onLogin,
   onRegister,
+
   onViewService,
+  onPublishService,
+
   onViewSalesCatalog,
+  onPublishSale,
+
   onViewSolidarity,
+  onPublishDonation,
+  onRequestHelp,
+
   onViewEmergencies,
+  onReportEmergency,
   emergencyReports = [],
+
   onViewReports,
+  onCreateReport,
+  citizenReports = [],
+
   onViewEvents,
-  communityEvents = [],
-  citizenReports = []
+  onCreateEvent,
+  communityEvents = []
 }) {
+  const isMapSection = !PRIVATE_SECTIONS.includes(section);
 
-  // ==========================================
-  // IDENTIFICAR SECCIONES DEL MAPA
-  // ==========================================
-  const isMapSection = ![
-    'Mensajes',
-    'Mi Perfil',
-    'Configuración'
-  ].includes(section);
-
-  // ==========================================
-  // PREPARAR PUBLICACIONES
-  // ==========================================
-  const items = useMemo(() => {
-
-    // Secciones privadas
-    if (!isMapSection) {
-      return templates[section] || [];
-    }
-
-    if (['Ventas', 'Solidaridad', 'Emergencias', 'Reportes', 'Eventos'].includes(section)) return [];
-
-    // Eventos y otras plantillas
-    if (section === 'Eventos') {
-      return templates[section] || [];
-    }
-
-    // Publicaciones filtradas por el motor del mapa
-    return services.map((service) => {
-
-      const distance = Number(service.distance);
-
-      const distanceText = Number.isFinite(distance)
-        ? `${(distance / 1000).toFixed(1)} km`
-        : 'Distancia no disponible';
-
-      return {
-        ...service,
-        detail: `${service.type || 'Servicio'} · ${distanceText}`,
-        action: 'Ver detalle'
-      };
-    });
-
-  }, [section, services, isMapSection]);
-
-  // ==========================================
-  // TÍTULO DEL PANEL
-  // ==========================================
   const title =
-    section === 'Inicio'
-      ? 'Todo cerca de ti'
-      : section === 'Servicios'
-      ? 'Servicios cerca de ti'
-      : section === 'Emergencias'
-      ? 'Emergencias cercanas'
-      : section === 'Solidaridad'
-      ? 'Red de solidaridad'
-      : section;
+    section === 'Inicio' ? 'Todo cerca de ti'
+      : section === 'Servicios' ? 'Servicios cerca de ti'
+        : section === 'Emergencias' ? 'Emergencias cercanas'
+          : section === 'Solidaridad' ? 'Solidaridad cerca de ti'
+            : section;
 
-  // ==========================================
-  // ABRIR DETALLE DE UN SERVICIO
-  // ==========================================
-  const handleViewService = (item) => {
-
-    // Solo las publicaciones de Servicios
-    // abren la página Servicios Locales.
-    if (section !== 'Servicios') {
-      return;
-    }
-
-    if (typeof onViewService === 'function') {
-      onViewService(item);
-    }
+  const countFor = () => {
+    if (section === 'Emergencias') return emergencyReports.length;
+    if (section === 'Reportes') return citizenReports.length;
+    if (section === 'Eventos') return communityEvents.length;
+    if (isMapSection) return services.length;
+    return 'â€¢';
   };
 
-  // ==========================================
-  // INTERFAZ
-  // ==========================================
+  const handleViewService = (item) => {
+    if (section !== 'Servicios') return;
+    onViewService?.(item);
+  };
+
+  const focusServiceOnMap = (item) => {
+    const lat = Number(item.lat);
+    const lng = Number(item.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    const map = window.GeoFastPe?.getMap?.();
+    map?.flyTo({ center: [lng, lat], zoom: 16, essential: true });
+  };
+
+  const renderItems = () => {
+    if (!isMapSection) {
+      return (
+        <div className="empty-state">
+          <h3>{section}</h3>
+          <p>Usa el panel central para gestionar esta sección.</p>
+        </div>
+      );
+    }
+
+    // Ventas se renderiza con services.map(), igual que Servicios e Inicio.
+    // El acceso al catálogo se mantiene en el return principal.
+
+    // Solidaridad utiliza services.map() para mostrar los puntos del backend.
+    // El botón de acceso al catálogo se renderiza fuera de renderItems().
+
+    if (section === 'Emergencias') {
+      return emergencyReports.length === 0 ? (
+        <div className="empty-state">
+          <h3>No hay emergencias registradas</h3>
+          <p>Cuando se reporte una emergencia aparecerÃ¡ aquÃ. No se notifica a las autoridades automÃ¡ticamente.</p>
+        </div>
+      ) : emergencyReports.map((report) => (
+        <article className="nearby-card" key={report.id}>
+          <div className="nearby-icon danger">{emergencyIcon(report.type)}</div>
+          <div className="nearby-copy">
+            <h3>{report.title}</h3>
+            <p>{report.type} · Urgencia {report.urgency}</p>
+            <small>{report.locationText || 'Ubicación por coordenadas'}</small>
+          </div>
+        </article>
+      ));
+    }
+
+    if (section === 'Reportes') {
+      return citizenReports.length === 0 ? (
+        <div className="empty-state">
+          <h3>Reportes comunitarios</h3>
+          <p>Aún no hay reportes. Abre el listado para crear el primero.</p>
+        </div>
+      ) : citizenReports.map((report) => (
+        <article className="nearby-card" key={report.id}>
+          <div className="nearby-icon purple">⚑</div>
+          <div className="nearby-copy">
+            <h3>{report.title}</h3>
+            <p>{report.category} · {report.location || 'Ubicación por coordenadas'}</p>
+            <small>{report.status}</small>
+          </div>
+        </article>
+      ));
+    }
+
+    if (section === 'Eventos') {
+      return communityEvents.length === 0 ? (
+        <div className="empty-state">
+          <h3>Eventos comunitarios</h3>
+          <p>Abre el catálogo para explorar eventos o publicar una actividad.</p>
+        </div>
+      ) : communityEvents.map((event) => (
+        <article className="nearby-card" key={event.id}>
+          <div className="nearby-icon purple">📅</div>
+          <div className="nearby-copy">
+            <h3>{event.title}</h3>
+            <p>{event.category} · {event.date} · {event.time}</p>
+            <small>{event.location}</small>
+          </div>
+          <button type="button" className="card-arrow" onClick={() => onViewEvents?.()} title="Ver eventos">→</button>
+        </article>
+      ));
+    }
+
+    if (services.length === 0) {
+      return (
+        <div className="empty-state">
+          <div className="empty-symbol">ðŸ“</div>
+          <h3>No hay resultados en esta zona</h3>
+          <p>AmplÃa el radio o cambia de ubicaciÃ³n para encontrar mÃ¡s elementos.</p>
+        </div>
+      );
+    }
+
+    return services.map((item, index) => {
+      const isService = item.kind === 'SERVICIO' && section === 'Servicios';
+      const isSale = item.kind === 'VENTA';
+      const isSolidarity = item.kind === 'SOLIDARIDAD';
+      const canFocus = isService || isSale || isSolidarity;
+      const markerIcon = item.kind === 'EMERGENCIA'
+        ? emergencyIcon(item.type)
+        : item.kind === 'SERVICIO'
+          ? serviceIcon(item.category || item.serviceCategory || item.type)
+          : isSale
+            ? '🛍️'
+            : item.kind === 'SOLIDARIDAD'
+              ? solidarityIcon(item)
+              : iconFor(item.type);
+
+      const iconClass = item.kind === 'EMERGENCIA'
+        ? 'danger'
+        : item.kind === 'SERVICIO'
+          ? 'service-icon'
+          : isSale
+            ? 'sale'
+            : item.kind === 'SOLIDARIDAD'
+              ? 'purple'
+              : '';
+
+      return (
+        <article
+          className="nearby-card"
+          key={`${item.kind}-${item.id ?? index}`}
+          onClick={() => {
+            if (canFocus) focusServiceOnMap(item);
+          }}
+        >
+          <div
+            className={`nearby-icon ${iconClass}`}
+            style={isSale ? { background: '#fff7ed', color: '#ea580c' } : undefined}
+          >
+            {markerIcon}
+          </div>
+          <div className="nearby-copy">
+            <h3>{item.title}</h3>
+            <p>{item.type || 'Punto'} · {formatDistance(item.distance)}</p>
+            {isService && <small className="rating">Ver información del servicio</small>}
+            {isSale && <small>Selecciona para ubicar el producto en el mapa</small>}
+            {isSolidarity && <small>Selecciona para ubicar la publicación en el mapa</small>}
+          </div>
+          <button
+            type="button"
+            className="card-arrow"
+            aria-label={isSale || isSolidarity ? `Ubicar ${item.title} en el mapa` : `Ver detalle de ${item.title}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (isService) handleViewService(item);
+              else if (isSale || isSolidarity) focusServiceOnMap(item);
+            }}
+            disabled={!canFocus}
+          >
+            →
+          </button>
+          {/* TODO (ventas): conectar la flecha con SaleDetail cuando App.jsx
+              exponga un callback onViewSale; por ahora enfoca el mapa. */}
+          {/* TODO (mapa): abrir el popup del marcador seleccionado. */}
+          {/* TODO (categorÃas): mostrar iconos especÃficos segÃºn los datos
+              de categorÃa que devuelva /mapa/puntos. */}
+        </article>
+      );
+    });
+  };
+
   return (
     <aside className="right-panel">
-
-      {/* =====================================
-          ENCABEZADO
-      ===================================== */}
       <div className="panel-heading">
         <div>
-          <span className="eyebrow">
-            {isMapSection
-              ? 'RADAR COMUNITARIO'
-              : 'GEOFASTPE · CUENTA'}
-          </span>
-
+          <span className="eyebrow">{isMapSection ? 'RADAR COMUNITARIO' : 'GEOFASTPE · CUENTA'}</span>
           <h2>{title}</h2>
-
           <p>
             {isMapSection
-              ? section === 'Emergencias' ? 'Reportes SOS de demostración' : `Resultados dentro de un radio de ${radius} m`
+              ? `Resultados dentro de un radio de ${radius} m`
               : 'Tu espacio comunitario'}
           </p>
         </div>
-
-        <span className="panel-count">
-          {isMapSection
-            ? section === 'Emergencias' ? emergencyReports.length : section === 'Reportes' ? citizenReports.length : section === 'Eventos' ? communityEvents.length : items.length
-            : '•••'}
-        </span>
+        <span className="panel-count">{countFor()}</span>
       </div>
 
-      {/* =====================================
-          FILTRO DE RADIO
-      ===================================== */}
       {isMapSection && section !== 'Emergencias' && (
         <div className="radius-filter">
-
           <div className="filter-label">
             <span>Radio de búsqueda</span>
             <strong>{radius} m</strong>
           </div>
-
           <input
             aria-label="Radio de búsqueda"
             type="range"
@@ -226,271 +279,208 @@ export default function SidePanel({
             max="5000"
             step="500"
             value={radius}
-            onChange={(event) => {
-              onRadiusChange(
-                Number(event.target.value)
-              );
-            }}
+            onChange={(event) => onRadiusChange(Number(event.target.value))}
           />
-
           <div className="range-ends">
             <span>500 m</span>
             <span>5 km</span>
           </div>
-
           <div className="filter-note">
-            El listado y los marcadores se limitan
-            a la zona circular del mapa.
+            El listado y los marcadores se limitan a la zona circular del mapa.
           </div>
-
         </div>
       )}
 
       {section === 'Emergencias' && (
         <div className="radius-filter">
-          <p>Consulta y registra alertas de emergencia en modo demostración. No se notifica a las autoridades automáticamente.</p>
+          <p>Consulta las alertas registradas. No se notifica a las autoridades automáticamente.</p>
           <button type="button" className="publish-back" onClick={() => onViewEmergencies?.()}>
-            Ver Emergencias (SOS) ›
+            Ver Emergencias (SOS) →
           </button>
         </div>
       )}
 
       {section === 'Eventos' && (
         <div className="radius-filter">
-          <p>Explora eventos comunitarios de demostración y consulta las actividades publicadas.</p>
+          <p>Explora los eventos comunitarios publicados por tu comunidad.</p>
           <button type="button" className="publish-back" onClick={() => onViewEvents?.()}>
-            Ver Eventos Comunitarios ›
+            Ver Eventos Comunitarios →
           </button>
         </div>
       )}
 
       {section === 'Reportes' && (
         <div className="radius-filter">
-          <p>Consulta incidencias comunitarias y crea reportes. Los ejemplos no representan incidencias verificadas.</p>
+          <p>Consulta incidencias comunitarias y crea reportes.</p>
           <button type="button" className="publish-back" onClick={() => onViewReports?.()}>
-            Ver Reportes Comunitarios ›
+            Ver Reportes Comunitarios →
           </button>
         </div>
       )}
 
-      {section === 'Solidaridad' && (
-        <div className="radius-filter">
-          <p>Consulta las donaciones y solicitudes de ayuda de la comunidad. Las publicaciones de demostración aún no están geolocalizadas.</p>
-          <button
-            type="button"
-            className="publish-back"
-            onClick={() => onViewSolidarity?.()}
-          >
-            Ver Solidaridad y Donaciones ›
-          </button>
-        </div>
-      )}
 
-      {section === 'Ventas' && (
+
+{/* ==========================================
+    VENTAS
+    TODO: añadir gestión de publicaciones propias.
+========================================== */}
+{section === 'Ventas' && (
+  <div className="service-publish-section">
+    <button
+      type="button"
+      className="service-publish-button"
+      onClick={() => onPublishSale?.()}
+    >
+      <span aria-hidden="true">＋</span>
+      Publicar venta
+    </button>
+    <small>Vende productos a tu comunidad.</small>
+  </div>
+)}
+
+{/* ==========================================
+    SOLIDARIDAD
+    TODO: mostrar estado de las donaciones.
+========================================== */}
+{section === 'Solidaridad' && (
+  <div className="service-publish-section">
+    <button
+      type="button"
+      className="service-publish-button"
+      onClick={() => onPublishDonation?.()}
+    >
+      <span aria-hidden="true">＋</span>
+      Publicar donación
+    </button>
+
+    <button
+      type="button"
+      className="publish-back"
+      onClick={() => onRequestHelp?.()}
+    >
+      Solicitar ayuda
+    </button>
+
+    <small>Comparte recursos o solicita apoyo comunitario.</small>
+  </div>
+)}
+
+{/* ==========================================
+    EMERGENCIAS
+    TODO: incorporar seguimiento del estado
+    de cada emergencia.
+========================================== */}
+{section === 'Emergencias' && (
+  <div className="service-publish-section">
+    <button
+      type="button"
+      className="service-publish-button"
+      onClick={() => onReportEmergency?.()}
+    >
+      <span aria-hidden="true">＋</span>
+      Reportar emergencia
+    </button>
+    <small>Registra una alerta para informar a la comunidad.</small>
+  </div>
+)}
+
+{/* ==========================================
+    REPORTES
+    TODO: permitir consultar el seguimiento
+    y la resolución de incidencias.
+========================================== */}
+{section === 'Reportes' && (
+  <div className="service-publish-section">
+    <button
+      type="button"
+      className="service-publish-button"
+      onClick={() => onCreateReport?.()}
+    >
+      <span aria-hidden="true">＋</span>
+      Crear reporte
+    </button>
+    <small>Informa sobre problemas de tu comunidad.</small>
+  </div>
+)}
+
+{/* ==========================================
+    EVENTOS
+    TODO: añadir filtros por fecha y categoría.
+========================================== */}
+{section === 'Eventos' && (
+  <div className="service-publish-section">
+    <button
+      type="button"
+      className="service-publish-button"
+      onClick={() => onCreateEvent?.()}
+    >
+      <span aria-hidden="true">＋</span>
+      Crear evento
+    </button>
+    <small>Organiza actividades para tu comunidad.</small>
+  </div>
+)}
+
+
+
+{section === 'Ventas' && (
         <div className="radius-filter">
-          <p>Explora el catálogo de Ventas Locales. Las publicaciones de prueba todavía no tienen ubicación geográfica validada.</p>
+          <p>Explora los productos publicados por tu comunidad.</p>
           <button
             type="button"
             className="publish-back"
             onClick={() => onViewSalesCatalog?.()}
           >
-            Ver Ventas Locales ›
+            Ver Ventas Locales →
           </button>
+          {/* TODO (ventas): añadir botón directo para publicar una venta
+              cuando exista un callback de publicación desde App.jsx. */}
         </div>
       )}
 
-      {/* =====================================
-          LISTADO DE PUBLICACIONES
-      ===================================== */}
-      <div className="panel-list">
+      {section === 'Solidaridad' && (
+        <div className="radius-filter">
+          <p>Consulta las donaciones y solicitudes de ayuda de la comunidad.</p>
+          <button type="button" className="publish-back" onClick={() => onViewSolidarity?.()}>
+            Ver Solidaridad y Donaciones →
+          </button>
+          {/* TODO: conectar un acceso directo a publicar donaciones o solicitudes desde App.jsx. */}
+        </div>
+      )}
+{/* ==========================================
+    PUBLICAR SERVICIO
+    Visible únicamente en el módulo Servicios.
+    Utiliza el callback existente de App.jsx.
+========================================== */}
 
-        {section === 'Eventos' ? (
-          communityEvents.length ? communityEvents.map((event, index) => (
-            <article className="nearby-card" key={event.id ?? index}>
-              <div className="nearby-icon purple">▦</div>
-              <div className="nearby-copy">
-                <h3>{event.title}</h3>
-                <p>{event.category} · {event.date} · {event.time}</p>
-                <small>{event.location}</small>
-              </div>
-              <button type="button" className="card-arrow" onClick={() => onViewEvents?.()} title="Ver eventos">›</button>
-            </article>
-          )) : (
-            <div className="empty-state"><h3>Eventos comunitarios</h3><p>Abre el catálogo para explorar eventos de demostración o publicar una actividad.</p></div>
-          )
-        ) : section === 'Reportes' ? (
-          citizenReports.length === 0 ? (
-            <div className="empty-state"><h3>Reportes comunitarios</h3><p>Abre el listado para explorar ejemplos o crear un reporte.</p></div>
-          ) : (
-            citizenReports.map((report, index) => (
-              <article className="nearby-card" key={report.id ?? index}>
-                <div className="nearby-icon purple">⚑</div>
-                <div className="nearby-copy">
-                  <h3>{report.title}</h3>
-                  <p>{report.category} · {report.location}</p>
-                  <small>Reporte local · {report.status || 'Pendiente'}</small>
-                </div>
-              </article>
-            ))
-          )
-        ) : section === 'Emergencias' ? (
-          emergencyReports.length === 0 ? (
-            <div className="empty-state">
-              <h3>No hay emergencias registradas</h3>
-              <p>Los reportes de demostración aparecerán aquí. No se notifican a las autoridades.</p>
-            </div>
-          ) : (
-            emergencyReports.map((report, index) => (
-              <article className="nearby-card" key={report.id ?? index}>
-                <div className="nearby-icon danger">!</div>
-                <div className="nearby-copy">
-                  <h3>{report.title || report.titulo || 'Emergencia reportada'}</h3>
-                  <p>{report.type || report.tipo || 'Emergencia'} · {report.urgency || report.urgencia || 'Urgencia no indicada'}</p>
-                  <small>Reporte de demostración · No enviado a autoridades</small>
-                </div>
-              </article>
-            ))
-          )
-        ) : section === 'Solidaridad' ? (
-          <div className="empty-state"><h3>Donaciones y solicitudes</h3><p>Abre Solidaridad para explorar las publicaciones de demostración.</p></div>
-        ) : section === 'Ventas' ? (
-          <div className="empty-state"><h3>Catálogo disponible</h3><p>Abre Ventas Locales para consultar productos.</p></div>
-        ) : items.length > 0 ? (
+{section === 'Servicios' && (
+  <div className="service-publish-section">
+    <button
+      type="button"
+      className="service-publish-button"
+      onClick={() => onPublishService?.()}
+    >
+      + Publicar servicio
+    </button>
 
-          items.map((item, index) => {
+    <small>
+      Ofrece tus servicios a los vecinos de tu comunidad.
+    </small>
+  </div>
+)}
 
-            const isService =
-              section === 'Servicios';
+{/* LISTADO DE RESULTADOS */}
 
-            return (
-              <article
-                className="nearby-card"
-                key={`${item.id ?? item.title ?? item.name}-${index}`}
-              >
+<div className="panel-list">{renderItems()}</div>
 
-                {/* ICONO */}
-                <div
-                  className={`nearby-icon ${
-                    item.type === 'Emergencia'
-                      ? 'danger'
-                      : item.type === 'Solidaridad'
-                      ? 'purple'
-                      : ''
-                  }`}
-                >
-                  {item.type
-                    ? iconFor(item.type)
-                    : ['▤', '▦', '✉', '♙', '⚙'][
-                        index % 5
-                      ]}
-                </div>
-
-                {/* INFORMACIÓN */}
-                <div className="nearby-copy">
-
-                  <h3>
-                    {item.name || item.title}
-                  </h3>
-
-                  <p>{item.detail}</p>
-
-                  {item.rating != null && (
-                    <small className="rating">
-                      ★ {Number(item.rating).toFixed(1)}
-                    </small>
-                  )}
-
-                  {/* ETIQUETA PARA SERVICIOS */}
-                  {isService && (
-                    <small
-                      style={{
-                        display: 'block',
-                        marginTop: '6px',
-                        color: '#7626ed',
-                        fontWeight: 600
-                      }}
-                    >
-                      Ver información del servicio
-                    </small>
-                  )}
-
-                </div>
-
-                {/* =================================
-                    BOTÓN PARA ABRIR EL SERVICIO
-                ================================= */}
-                <button
-                  type="button"
-                  className="card-arrow"
-                  aria-label={
-                    isService
-                      ? `Ver detalle de ${
-                          item.name || item.title
-                        }`
-                      : `Abrir ${
-                          item.name || item.title
-                        }`
-                  }
-                  title={
-                    isService
-                      ? 'Ver detalle del servicio'
-                      : item.action
-                  }
-                  onClick={() => {
-                    handleViewService(item);
-                  }}
-                  disabled={!isService}
-                >
-                  ›
-                </button>
-
-              </article>
-            );
-          })
-
-        ) : (
-
-          <div className="empty-state">
-            <div className="empty-symbol">
-              ⌖
-            </div>
-
-            <h3>
-              No hay resultados en esta zona
-            </h3>
-
-            <p>
-              Amplía el radio o cambia de ubicación
-              para encontrar más elementos.
-            </p>
-          </div>
-
-        )}
-
-      </div>
-
-      {/* =====================================
-          AUTENTICACIÓN
-          SE MANTIENE EN EL PANEL DERECHO
-      ===================================== */}
       <div className="panel-auth-section">
-        <AuthHeader
-          onLogin={onLogin}
-          onRegister={onRegister}
-        />
+        <AuthHeader onLogin={onLogin} onRegister={onRegister} />
       </div>
 
-      {/* =====================================
-          PIE DEL PANEL
-      ===================================== */}
       <div className="panel-footer">
         <span className="live-dot" />
-
-        {isMapSection
-          ? 'Actualizado según el área visible'
-          : 'Plantilla de interfaz · lista para conectar'}
+        {isMapSection ? 'Actualizado según el área visible' : 'Datos en tiempo real desde el servidor'}
       </div>
-
     </aside>
   );
 }

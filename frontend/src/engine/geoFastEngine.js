@@ -1,8 +1,10 @@
 /*
  * Motor original de GeoFastPe.
- * Se conserva íntegro el JavaScript del HTML entregado; únicamente se encapsula
+ * Se conserva Ã­ntegro el JavaScript del HTML entregado; Ãºnicamente se encapsula
  * para inicializarlo desde el ciclo de vida de React.
  */
+import { API_BASE } from '../api/client.js';
+
 export function initializeGeoFastPe() {
 
         // ============================================================
@@ -62,17 +64,9 @@ export function initializeGeoFastPe() {
         });
         map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showCompass: false }), 'top-right');
 
-        // Datos simulados
+        // Puntos del mapa cargados desde la API (GET /mapa/puntos)
         let servicesData = [];
-        for (let i = 0; i < 40; i++) {
-            servicesData.push({
-                id: i, name: `Servicio ${i + 1}`,
-                type: i % 4 === 0 ? "Emergencia" : (i % 3 === 0 ? "Solidaridad" : "Gasfitería"),
-                lat: currentCenter.lat + (Math.random() - 0.5) * 0.05,
-                lng: currentCenter.lng + (Math.random() - 0.5) * 0.05,
-                rating: Math.floor(Math.random() * 5) + 1
-            });
-        }
+        let puntosSeq = 0;
 
         let toastTimer;
         function toast(msg) {
@@ -84,7 +78,7 @@ export function initializeGeoFastPe() {
         }
 
         // ============================================================
-        // 3. INICIALIZACIÓN
+        // 3. INICIALIZACIÃ“N
         // ============================================================
         map.on('load', () => {
             removeBase3DLayers();
@@ -98,7 +92,7 @@ export function initializeGeoFastPe() {
             toast('GeoFastPe listo');
         });
 
-        // 🔑 Elimina los fill-extrusion del estilo base, PERO NUNCA el custom
+        // ðŸ”‘ Elimina los fill-extrusion del estilo base, PERO NUNCA el custom
         function removeBase3DLayers() {
             try {
                 const layers = map.getStyle().layers || [];
@@ -180,7 +174,7 @@ export function initializeGeoFastPe() {
             return style;
         }
 
-        // SATÉLITE
+        // SATÃ‰LITE
         async function buildSatelliteStyle() {
             try {
                 const resp = await fetch(STYLE_URLS.transport);
@@ -211,7 +205,7 @@ export function initializeGeoFastPe() {
                         type: 'raster',
                         tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
                         tileSize: 256, maxzoom: 19,
-                        attribution: 'Imagery © Esri'
+                        attribution: 'Imagery Â© Esri'
                     }
                 };
                 usedSources.forEach(s => { if (bright.sources[s]) sources[s] = bright.sources[s]; });
@@ -267,7 +261,7 @@ export function initializeGeoFastPe() {
             });
         }
 
-        // 🔑 RELIEVE: liberty filtrado + hillshade + CUSTOM 3D EN EL MISMO JSON
+        // ðŸ”‘ RELIEVE: liberty filtrado + hillshade + CUSTOM 3D EN EL MISMO JSON
         async function buildReliefStyle() {
             try {
                 const response = await fetch(STYLE_URLS.light);
@@ -276,14 +270,14 @@ export function initializeGeoFastPe() {
                 // 1. Filtrar 3D base (para no duplicar)
                 style.layers = style.layers.filter(l => l.type !== 'fill-extrusion');
 
-                // 2. Añadir DEM
+                // 2. AÃ±adir DEM
                 style.sources['mapterhorn-dem'] = {
                     type: 'raster-dem',
                     url: DEM_URL,
                     tileSize: 256
                 };
 
-                // 3. Añadir hillshade antes del primer symbol
+                // 3. AÃ±adir hillshade antes del primer symbol
                 const firstSymbolIndex = style.layers.findIndex(l => l.type === 'symbol');
                 const hillshadeLayer = {
                     id: 'relief-hillshade',
@@ -299,7 +293,7 @@ export function initializeGeoFastPe() {
                 if (firstSymbolIndex !== -1) style.layers.splice(firstSymbolIndex, 0, hillshadeLayer);
                 else style.layers.push(hillshadeLayer);
 
-                // 🔑 4. AÑADIR EL CUSTOM 3D DIRECTAMENTE AL JSON (así no se pierde)
+                // ðŸ”‘ 4. AÃ‘ADIR EL CUSTOM 3D DIRECTAMENTE AL JSON (asÃ­ no se pierde)
                 let sourceName = 'openmaptiles';
                 if (!style.sources[sourceName]) {
                     for (let s in style.sources) {
@@ -465,7 +459,7 @@ export function initializeGeoFastPe() {
         }
 
         // ============================================================
-        // 8. CÍRCULO
+        // 8. CÃRCULO
         // ============================================================
         function createGeoJSONCircle(center, radiusInKm, points = 512) {
             const coords = { latitude: center[1], longitude: center[0] };
@@ -511,11 +505,12 @@ export function initializeGeoFastPe() {
                 });
                 map.addLayer({
                     id: 'radius-line-outer', type: 'line', source: 'radius-circle',
-                    paint: { 'line-color': lineOuterColor, 'line-width': 6, 'line-opacity': 0.45, 'line-join': 'round', 'line-cap': 'round' }
+                    paint: { 'line-color': lineOuterColor,
+                        'line-width': 6, 'line-opacity': 0.45, 'line-join': 'round', 'line-cap': 'round' }
                 });
                 map.addLayer({
                     id: 'radius-line', type: 'line', source: 'radius-circle',
-                    paint: { 'line-color': lineMainColor, 'line-width': 3, 'line-opacity': 0.95, 'line-join': 'round', 'line-cap': 'round' }
+                    paint: { 'line-color': lineMainColor, 'line-width': 6, 'line-opacity': 0.45, 'line-join': 'round', 'line-cap': 'round' }
                 });
             }
         }
@@ -524,40 +519,249 @@ export function initializeGeoFastPe() {
         // 9. MARCADORES
         // ============================================================
         let markers = [];
-        function updateServices() {
+function tipoDePuntos() {
+    if (isEmergencyMode || selectedServiceCategory === 'Emergencia')
+        return 'EMERGENCIA';
+
+    if (selectedServiceCategory === 'Servicios')
+        return 'SERVICIO';
+
+    if (selectedServiceCategory === 'Ventas')
+        return 'VENTA';
+
+    if (selectedServiceCategory === 'Solidaridad')
+        return 'SOLIDARIDAD';
+
+    if (selectedServiceCategory === 'Reportes')
+        return 'REPORTE';
+
+    if (selectedServiceCategory === 'Eventos')
+        return 'EVENTO';
+
+    if (
+        selectedServiceCategory === 'Todos' ||
+        selectedServiceCategory === 'Inicio' ||
+        selectedServiceCategory === 'Mapa Vecinal'
+    )
+        return null;
+
+    return 'NINGUNO';
+}
+
+        // ============================================================
+        // 9.1. ICONOS SEGUN EL TIPO DE PUNTO
+        // ============================================================
+        // TODO (backend): devolver la categoria especifica del servicio
+        // (ej. Electricidad) en GET /mapa/puntos. Actualmente algunos
+        // puntos solo devuelven "Servicio en local", por lo que usan 🛠️.
+        function normalizeLabel(value) {
+            return String(value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
+        }
+
+        function getEmergencyIcon(type) {
+            const value = normalizeLabel(type);
+            if (value.includes('incendio') || value.includes('fuego')) return '🔥';
+            if (value.includes('accidente') || value.includes('choque')) return '🚗';
+            if (value.includes('medica') || value.includes('salud')) return '🚑';
+            if (value.includes('inundacion')) return '🌊';
+            if (value.includes('robo') || value.includes('asalto')) return '🚨';
+            if (value.includes('sismo') || value.includes('terremoto')) return '🏚️';
+            return '⚠️';
+        }
+
+        function getServiceIcon(type) {
+            const value = normalizeLabel(type);
+            if (value.includes('electric')) return '⚡';
+            if (value.includes('gasfiter') || value.includes('plomer')) return '🔧';
+            if (value.includes('comput') || value.includes('tecnolog')) return '💻';
+            if (value.includes('limpieza')) return '🧹';
+            if (value.includes('carpinter')) return '🪚';
+            if (value.includes('jardiner')) return '🌱';
+            if (value.includes('educacion') || value.includes('clases')) return '📚';
+            return '🛠️';
+        }
+
+
+function makePointMarker(point) {
+    const colors = {
+    SERVICIO: '#10b981',
+    EMERGENCIA: '#ef4444',
+    VENTA: '#f59e0b',
+    SOLIDARIDAD: '#8b5cf6',
+    REPORTE: '#0ea5e9',
+    EVENTO: '#8b5cf6'
+    };
+
+    const kind = String(point.kind || '').toUpperCase();
+    const color = colors[kind] || '#3b82f6';
+
+    const el = document.createElement('div');
+    let icono = '📍';
+    let nombreTipo = 'Punto comunitario';
+
+    // ==========================================
+    // EMERGENCIAS
+    // ==========================================
+    if (kind === 'EMERGENCIA') {
+        icono = getEmergencyIcon(point.type);
+        nombreTipo = 'Emergencia';
+
+        // TODO: Mostrar nivel de urgencia.
+        // TODO: Diferenciar emergencias activas y resueltas.
+
+    // ==========================================
+    // SERVICIOS
+    // ==========================================
+    } else if (kind === 'SERVICIO') {
+        icono = getServiceIcon(
+            point.category ||
+            point.serviceCategory ||
+            point.type
+        );
+        nombreTipo = 'Servicio';
+
+        // TODO: Obtener la categoría específica del backend.
+        // TODO: Mostrar disponibilidad del servicio.
+
+    // ==========================================
+    // VENTAS
+    // ==========================================
+    } else if (kind === 'VENTA') {
+        icono = '🛍️';
+        nombreTipo = 'Venta';
+
+        // TODO: Personalizar íconos por categoría:
+        // Electrónica: 💻
+        // Ropa: 👕
+        // Alimentos: 🥬
+        // Hogar: 🏠
+        // Otros: 🛍️
+
+        // TODO: Mostrar precio y estado del producto.
+        // TODO: Abrir detalle del producto al hacer clic.
+
+    // ==========================================
+    // SOLIDARIDAD
+    // ==========================================
+    } else if (kind === 'SOLIDARIDAD') {
+        icono = '💜';
+        nombreTipo = 'Solidaridad';
+
+        // TODO: Diferenciar donaciones y solicitudes de ayuda.
+        // TODO: Mostrar estado de la publicación.
+        // TODO: Abrir detalle de la publicación.
+    }
+
+    // ==========================================
+    // DISEÑO DEL MARCADOR
+    // ==========================================
+    el.textContent = icono;
+
+    el.style.cssText = `
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+        border: 2.5px solid ${color};
+        border-radius: 50%;
+        font-size: 19px;
+        line-height: 1;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.22);
+        cursor: pointer;
+    `;
+
+    el.setAttribute(
+        'aria-label',
+        `${nombreTipo}: ${point.title || point.type || 'Punto'}`
+    );
+
+    // TODO: Añadir una leyenda de íconos al mapa.
+    // TODO: Incorporar filtros por subcategoría.
+    // TODO: Agrupar marcadores cuando existan muchos puntos.
+    // TODO: Añadir indicadores accesibles de prioridad.
+
+    return el;
+}
+
+
+        // Evita insertar texto recibido del backend directamente como HTML.
+        function makePointPopup(point) {
+            const content = document.createElement('div');
+            content.style.fontFamily = 'inherit';
+            const title = document.createElement('b');
+            title.textContent = point.title || 'Punto comunitario';
+            const subtitle = document.createElement('div');
+            subtitle.style.cssText = 'color:#64748b;font-size:12px;margin-top:3px';
+            subtitle.textContent = point.type || '';
+            content.append(title, subtitle);
+            // TODO (detalle): incorporar enlace a la ficha de servicio o
+            // emergencia cuando exista un callback de navegacion desde React.
+            // TODO (emergencias): mostrar estado (activa/resuelta) y fecha
+            // si la API devuelve esos campos.
+            return new maplibregl.Popup({ offset: 18 }).setDOMContent(content);
+        }
+
+        async function updateServices() {
+            const tipo = tipoDePuntos();
+            const seq = ++puntosSeq;
+            let puntos = [];
+
+            if (tipo !== 'NINGUNO') {
+                try {
+                    const params = new URLSearchParams({
+                        lat: currentCenter.lat,
+                        lng: currentCenter.lng,
+                        radio: currentRadius
+                    });
+                    if (tipo) params.set('tipo', tipo);
+                    const res = await fetch(`${API_BASE}/mapa/puntos?${params}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    puntos = await res.json();
+                    if (!Array.isArray(puntos)) throw new Error('Respuesta de puntos invalida');
+                } catch (e) {
+                    console.warn('No se pudieron cargar los puntos del mapa:', e);
+                    toast('No se pudieron cargar los puntos del mapa');
+                }
+            }
+            // Evita que una peticion anterior sobreescriba la mas reciente.
+            if (seq !== puntosSeq) return;
+
+            servicesData = puntos.map(p => ({ ...p, name: p.title }));
             markers.forEach(m => m.remove());
             markers = [];
-            let count = 0;
 
-            servicesData.forEach(s => {
-                const dist = calcDist(currentCenter.lat, currentCenter.lng, s.lat, s.lng);
-                const inRadius = dist <= currentRadius;
-                const categoryMatch = selectedServiceCategory === 'Todos' || (selectedServiceCategory === 'Servicios' ? s.type === 'Gasfitería' : s.type === selectedServiceCategory);
-                const show = inRadius && categoryMatch && (!isEmergencyMode || s.type === 'Emergencia');
+            servicesData.forEach(point => {
+                const lat = Number(point.lat);
+                const lng = Number(point.lng);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
+                    lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
 
-                if (show) {
-                    count++;
-                    const color = s.type === "Emergencia" ? "#ef4444" : (s.type === "Solidaridad" ? "#8b5cf6" : "#10b981");
-                    const el = document.createElement('div');
-                    el.style.cssText = `background:${color}; width:14px; height:14px; border-radius:50%; border:2.5px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.5);`;
-
-                    markers.push(new maplibregl.Marker({ element: el, anchor: 'center' })
-                        .setLngLat([s.lng, s.lat])
-                        .setPopup(new maplibregl.Popup({ offset: 12 }).setHTML(
-                            `<div style="font-family:inherit;"><b>${s.name}</b><br><span style="color:#64748b;font-size:12px">${s.type}</span><br><span style="color:#f59e0b">${'★'.repeat(s.rating)}</span></div>`
-                        ))
-                        .addTo(map));
-                }
+                const el = makePointMarker(point);
+                markers.push(new maplibregl.Marker({ element: el, anchor: 'center' })
+                    .setLngLat([lng, lat])
+                    .setPopup(makePointPopup(point))
+                    .addTo(map));
             });
-            toast(`${count} servicios en radio`);
+
+            // TODO (sincronizacion): despues de publicar un servicio o
+            // emergencia, solicitar updateServices() desde el flujo React
+            // para reflejar el nuevo punto sin recargar toda la pagina.
+            // TODO (rendimiento): aplicar agrupacion de marcadores (clusters)
+            // si la cantidad de puntos crece considerablemente.
+            toast(`${servicesData.length} puntos en radio`);
             window.dispatchEvent(new CustomEvent('geofastpe:services', { detail: {
-                count,
+                count: servicesData.length,
                 radius: currentRadius,
                 category: selectedServiceCategory,
-                services: servicesData.map(s => ({...s, distance: calcDist(currentCenter.lat, currentCenter.lng, s.lat, s.lng)}))
-                    .filter(s => s.distance <= currentRadius)
-                    .filter(s => selectedServiceCategory === 'Todos' || (selectedServiceCategory === 'Servicios' ? s.type === 'Gasfitería' : s.type === selectedServiceCategory))
-                    .filter(s => !isEmergencyMode || s.type === 'Emergencia')
+                services: servicesData.map(s => ({
+                    ...s,
+                    distance: s.distance ?? calcDist(currentCenter.lat, currentCenter.lng, s.lat, s.lng)
+                }))
             }}));
         }
 
@@ -583,7 +787,7 @@ export function initializeGeoFastPe() {
         });
 
         // ============================================================
-        // 11. CONTROL DE ROTACIÓN
+        // 11. CONTROL DE ROTACIÃ“N
         // ============================================================
         const compassEl = document.getElementById('rotation-compass');
         const compassArrow = document.getElementById('compass-arrow');
@@ -595,7 +799,7 @@ export function initializeGeoFastPe() {
         function updateCompass() {
             const bearing = map.getBearing();
             compassArrow.style.transform = `rotate(${-bearing}deg)`;
-            rotationValue.innerText = `${Math.round(bearing)}°`;
+            rotationValue.innerText = `${Math.round(bearing)}Â°`;
         }
         map.on('rotate', updateCompass);
         map.on('rotateend', updateCompass);
@@ -640,14 +844,7 @@ export function initializeGeoFastPe() {
         // ============================================================
         // 12. INTERFAZ
         // ============================================================
-        document.getElementById('radius-slider').addEventListener('input', (e) => {
-            currentRadius = parseInt(e.target.value);
-            document.getElementById('radius-value').innerText = currentRadius;
-            addRadiusCircle();
-            updateServices();
-        });
-
-        document.getElementById('city-selector').addEventListener('change', (e) => {
+        document.getElementById('city-selector')?.addEventListener('change', (e) => {
             const city = CITIES[e.target.value];
             currentCenter = { lat: city.lat, lng: city.lng };
             currentCityName = city.name;
@@ -660,7 +857,7 @@ export function initializeGeoFastPe() {
             }, 1200);
         });
 
-        document.getElementById('btn-3d').addEventListener('click', () => {
+        document.getElementById('btn-3d')?.addEventListener('click', () => {
             is3DMode = !is3DMode;
             document.getElementById('btn-3d').classList.toggle('active', is3DMode);
             map.easeTo({ pitch: is3DMode ? 60 : 0, bearing: map.getBearing(), duration: 800 });
@@ -670,20 +867,20 @@ export function initializeGeoFastPe() {
         // ============================================================
         // 13. GPS
         // ============================================================
-        document.getElementById('btn-gps').addEventListener('click', () => {
+        document.getElementById('btn-gps')?.addEventListener('click', () => {
             if (!navigator.geolocation) { toast('GPS no disponible'); return; }
-            toast('Obteniendo ubicación...');
+            toast('Obteniendo ubicaciÃ³n...');
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     currentCenter = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                    currentCityName = 'Mi ubicación';
+                    currentCityName = 'Mi ubicaciÃ³n';
                     if (centerPin) centerPin.setLngLat([currentCenter.lng, currentCenter.lat]);
                     map.flyTo({ center: [currentCenter.lng, currentCenter.lat], zoom: 16 });
                     setTimeout(() => { addRadiusCircle(); updateServices(); autoLoadWeather(); }, 1200);
                     toast(`GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
                 },
                 (err) => {
-                    const codes = { 1: 'Permiso denegado', 2: 'Posición no disponible', 3: 'Tiempo agotado' };
+                    const codes = { 1: 'Permiso denegado', 2: 'PosiciÃ³n no disponible', 3: 'Tiempo agotado' };
                     toast('GPS: ' + (codes[err.code] || 'Error'));
                 },
                 { enableHighAccuracy: true, timeout: 15000 }
@@ -693,7 +890,7 @@ export function initializeGeoFastPe() {
         // ============================================================
         // 14. RUTAS CON MODOS (Auto / A pie / Bici)
         // ============================================================
-        document.getElementById('btn-route').addEventListener('click', () => {
+        document.getElementById('btn-route')?.addEventListener('click', () => {
             routingMode = !routingMode;
             document.getElementById('route-modes').classList.toggle('show', routingMode);
             map.getCanvas().style.cursor = routingMode ? 'crosshair' : '';
@@ -745,24 +942,31 @@ export function initializeGeoFastPe() {
             if (!routingMode) return;
             const destLng = e.lngLat.lng;
             const destLat = e.lngLat.lat;
-            const url = `${ROUTE_URLS[currentRouteMode]}/${currentCenter.lng},${currentCenter.lat};${destLng},${destLat}?overview=full&geometries=geojson`;
             toast('Calculando ruta...');
             try {
-                const res = await fetch(url);
+                const params = new URLSearchParams({
+                    modo: currentRouteMode,
+                    origenLat: currentCenter.lat,
+                    origenLng: currentCenter.lng,
+                    destinoLat: destLat,
+                    destinoLng: destLng
+                });
+                const res = await fetch(`${API_BASE}/geo/ruta?${params}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-                if (data.code === 'Ok') {
-                    routeGeoJSON = data.routes[0].geometry;
-                    const dist = (data.routes[0].distance / 1000).toFixed(1);
-                    const dur = Math.round(data.routes[0].duration / 60);
+                if (data.geometry) {
+                    routeGeoJSON = data.geometry;
+                    const dist = (data.distanceMeters / 1000).toFixed(1);
+                    const dur = Math.round(data.durationSeconds / 60);
                     redrawRoute();
 
-                    // Actualizar color según modo
+                    // Actualizar color segÃºn modo
                     if (map.getLayer('route-line')) {
                         map.setPaintProperty('route-line', 'line-color', getRouteColor());
                     }
 
-                    const labels = { driving: '🚗', walking: '🚶', cycling: '🚴' };
-                    toast(`${labels[currentRouteMode]} ${dist} km · ${dur} min`);
+                    const labels = { driving: 'ðŸš—', walking: 'ðŸš¶', cycling: 'ðŸš´' };
+                    toast(`${labels[currentRouteMode]} ${dist} km Â· ${dur} min`);
 
                     const coords = routeGeoJSON.coordinates;
                     const bounds = coords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
@@ -772,7 +976,7 @@ export function initializeGeoFastPe() {
         });
 
         // ============================================================
-        // 15. BÚSQUEDA
+        // 15. BÃšSQUEDA
         // ============================================================
         async function buscarLugar() {
             const query = document.getElementById('search-input').value.trim();
@@ -781,34 +985,30 @@ export function initializeGeoFastPe() {
             resultsDiv.innerHTML = '<div class="result-item">Buscando...</div>';
             resultsDiv.classList.add('show');
 
-            const latDelta = currentRadius / 111000;
-            const lngDelta = currentRadius / (111000 * Math.cos(currentCenter.lat * Math.PI / 180));
-            const viewbox = `${currentCenter.lng - lngDelta},${currentCenter.lat + latDelta},${currentCenter.lng + lngDelta},${currentCenter.lat - latDelta}`;
-
             try {
-                let url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&viewbox=${viewbox}&bounded=1&limit=5&addressdetails=1`;
-                let res = await fetch(url, { headers: { 'Accept-Language': 'es' } });
-                let data = await res.json();
+                const params = new URLSearchParams({
+                    q: query,
+                    lat: currentCenter.lat,
+                    lng: currentCenter.lng
+                });
+                const res = await fetch(`${API_BASE}/geo/buscar?${params}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const lugares = await res.json();
+                const data = lugares.map(p => ({
+                    display_name: p.displayName,
+                    lat: String(p.lat),
+                    lon: String(p.lng),
+                    _dist: p.distance ?? undefined,
+                    _fuera: p.distance != null && p.distance > currentRadius
+                }));
 
                 if (data.length === 0) {
-                    url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=10&addressdetails=1&bounded=0`;
-                    res = await fetch(url, { headers: { 'Accept-Language': 'es' } });
-                    data = await res.json();
-                    if (data.length > 0) {
-                        data = data.map(place => ({
-                            ...place,
-                            _dist: calcDist(currentCenter.lat, currentCenter.lng, parseFloat(place.lat), parseFloat(place.lon))
-                        })).sort((a, b) => a._dist - b._dist);
-                    }
-                }
-
-                if (data.length === 0) {
-                    resultsDiv.innerHTML = '<div class="result-item">Sin resultados. Intenta con otro término.</div>';
+                    resultsDiv.innerHTML = '<div class="result-item">Sin resultados. Intenta con otro tÃ©rmino.</div>';
                     return;
                 }
 
                 resultsDiv.innerHTML = '';
-                const esFallback = data.length > 0 && data[0]._dist !== undefined;
+                const esFallback = data.some(place => place._fuera);
                 if (esFallback) {
                     const notice = document.createElement('div');
                     notice.className = 'result-nearby';
@@ -820,7 +1020,7 @@ export function initializeGeoFastPe() {
                     const item = document.createElement('div');
                     item.className = 'result-item';
                     const name = place.display_name.split(',')[0];
-                    const distText = place._dist ? ` · ${(place._dist / 1000).toFixed(1)} km` : '';
+                    const distText = place._dist ? ` Â· ${(place._dist / 1000).toFixed(1)} km` : '';
                     item.innerHTML = `<strong>${name}${distText}</strong><small>${place.display_name}</small>`;
                     item.addEventListener('click', () => {
                         const lat = parseFloat(place.lat);
@@ -844,10 +1044,10 @@ export function initializeGeoFastPe() {
                     });
                     resultsDiv.appendChild(item);
                 });
-            } catch (e) { resultsDiv.innerHTML = '<div class="result-item">Error de búsqueda</div>'; }
+            } catch (e) { resultsDiv.innerHTML = '<div class="result-item">Error de bÃºsqueda</div>'; }
         }
-        document.getElementById('search-btn').addEventListener('click', buscarLugar);
-        document.getElementById('search-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') buscarLugar(); });
+        document.getElementById('search-btn')?.addEventListener('click', buscarLugar);
+        document.getElementById('search-input')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') buscarLugar(); });
         document.addEventListener('click', (e) => { if (!document.getElementById('search-container').contains(e.target)) document.getElementById('search-results').classList.remove('show'); });
 
         // ============================================================
@@ -867,10 +1067,10 @@ export function initializeGeoFastPe() {
                 return;
             }
             try {
-                const url = `https://api.open-meteo.com/v1/forecast?latitude=${currentCenter.lat}&longitude=${currentCenter.lng}&current=temperature_2m,cloud_cover,wind_speed_10m,wind_direction_10m,precipitation,weather_code,relative_humidity_2m&timezone=auto`;
-                const res = await fetch(url);
-                const data = await res.json();
-                const cur = data.current;
+                const params = new URLSearchParams({ lat: currentCenter.lat, lng: currentCenter.lng });
+                const res = await fetch(`${API_BASE}/geo/clima?${params}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const cur = await res.json();
                 currentWeatherData = cur;
                 renderWeatherCard(cur);
                 renderCloudIndicator(cur.cloud_cover);
@@ -897,8 +1097,8 @@ export function initializeGeoFastPe() {
                 card.innerHTML = `
                     <div class="wx-header" id="wx-toggle">
                         <div class="wx-icon-wrap" id="wx-icon">${weatherSVG(cur.weather_code)}</div>
-                        <div class="wx-main"><div class="wx-temp" id="wx-temp">${Math.round(cur.temperature_2m)}°C</div><div class="wx-desc" id="wx-desc">${desc}</div></div>
-                        <div style="font-size:10px;color:#64748b;">›</div>
+                        <div class="wx-main"><div class="wx-temp" id="wx-temp">${Math.round(cur.temperature_2m)}Â°C</div><div class="wx-desc" id="wx-desc">${desc}</div></div>
+                        <div style="font-size:10px;color:#64748b;">â€º</div>
                     </div>
                     <div class="wx-place" id="wx-place">${currentCityName}</div>
                     <div class="wx-details">
@@ -908,11 +1108,11 @@ export function initializeGeoFastPe() {
                         <div class="row"><span class="label">Nubes</span><span class="value" id="wx-clouds">-</span></div>
                     </div>
                 `;
-                document.getElementById('wx-toggle').addEventListener('click', () => card.classList.toggle('expanded'));
+                document.getElementById('wx-toggle')?.addEventListener('click', () => card.classList.toggle('expanded'));
                 card.classList.add('show');
             }
             document.getElementById('wx-icon').innerHTML = weatherSVG(cur.weather_code);
-            document.getElementById('wx-temp').innerText = Math.round(cur.temperature_2m) + '°C';
+            document.getElementById('wx-temp').innerText = Math.round(cur.temperature_2m) + 'Â°C';
             document.getElementById('wx-desc').innerText = desc;
             document.getElementById('wx-place').innerText = currentCityName;
             document.getElementById('wx-wind').innerText = `${Math.round(cur.wind_speed_10m)} km/h ${cardDir}`;
@@ -992,25 +1192,25 @@ export function initializeGeoFastPe() {
         // ============================================================
         function updateConnectivityBadge() {
             const badge = document.getElementById('connectivity-badge');
-            if (navigator.onLine) { badge.classList.remove('offline'); badge.innerText = 'En línea'; }
-            else { badge.classList.add('offline'); badge.innerText = 'Sin conexión'; document.getElementById('weather-card').classList.remove('show'); stopClouds(); clearWindArrows(); if (cloudIndicatorMarker) { cloudIndicatorMarker.remove(); cloudIndicatorMarker = null; } }
+            if (navigator.onLine) { badge.classList.remove('offline'); badge.innerText = 'En lÃ­nea'; }
+            else { badge.classList.add('offline'); badge.innerText = 'Sin conexiÃ³n'; document.getElementById('weather-card').classList.remove('show'); stopClouds(); clearWindArrows(); if (cloudIndicatorMarker) { cloudIndicatorMarker.remove(); cloudIndicatorMarker = null; } }
         }
-        window.addEventListener('online', () => { updateConnectivityBadge(); toast('Conexión restaurada'); autoLoadWeather(); });
-        window.addEventListener('offline', () => { updateConnectivityBadge(); toast('Sin conexión'); });
+        window.addEventListener('online', () => { updateConnectivityBadge(); toast('ConexiÃ³n restaurada'); autoLoadWeather(); });
+        window.addEventListener('offline', () => { updateConnectivityBadge(); toast('Sin conexiÃ³n'); });
 
-        document.getElementById('btn-emergency').addEventListener('click', () => {
+        document.getElementById('btn-emergency')?.addEventListener('click', () => {
             isEmergencyMode = !isEmergencyMode;
             document.getElementById('btn-emergency').style.boxShadow = isEmergencyMode ? '0 0 0 4px rgba(220,38,38,0.3), 0 4px 14px rgba(0,0,0,0.25)' : '';
-            if (isEmergencyMode) { currentRadius = 5000; document.getElementById('radius-slider').value = 5000; document.getElementById('radius-value').innerText = 5000; }
-            else { currentRadius = 1000; document.getElementById('radius-slider').value = 1000; document.getElementById('radius-value').innerText = 1000; }
+            currentRadius = isEmergencyMode ? 5000 : 1000;
             addRadiusCircle(); updateServices();
         });
 
         window.GeoFastPe = {
             setCategory(category) { selectedServiceCategory = category; updateServices(); },
+            setRadius(value) { currentRadius = value; addRadiusCircle(); updateServices(); },
             getMap() { return map; },
             getState() { return { radius: currentRadius, city: currentCityName, category: selectedServiceCategory }; }
         };
         window.addEventListener('resize', () => map.invalidateSize());
-    
+
 }

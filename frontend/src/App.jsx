@@ -1,16 +1,14 @@
-import { useEffect, useState } from 'react';
-import EventsPage, { demoEvents } from './features/events/EventsPage.jsx';
+import { useEffect, useRef, useState } from 'react';
+import EventsPage from './features/events/EventsPage.jsx';
 import CreateEvent from './features/events/CreateEvent.jsx';
 import EventDetail from './features/events/EventDetail.jsx';
-import ReportsPage, { demoReports } from './features/reports/ReportsPage.jsx';
+import ReportsPage from './features/reports/ReportsPage.jsx';
 import CreateReport from './features/reports/CreateReport.jsx';
 import ReportDetail from './features/reports/ReportDetail.jsx';
 import EmergencyPage from './features/emergency/EmergencyPage.jsx';
 import ReportEmergency from './features/emergency/ReportEmergency.jsx';
 
-// ==========================================
 // VENTAS LOCALES
-// ==========================================
 import SalesPage from './features/sales/SalesPage.jsx';
 import PublishSale from './features/sales/PublishSale.jsx';
 import SaleDetail from './features/sales/SaleDetail.jsx';
@@ -20,9 +18,7 @@ import SolidarityPage from './features/solidarity/SolidarityPage.jsx';
 import RequestHelp from './features/solidarity/RequestHelp.jsx';
 import PublishDonation from './features/solidarity/PublishDonation.jsx';
 
-// ==========================================
 // COMPONENTES DEL MAPA
-// ==========================================
 import MapView from './components/views/MapView.jsx';
 import ConnectivityView from './components/views/ConnectivityView.jsx';
 import SearchView from './components/views/SearchView.jsx';
@@ -30,101 +26,188 @@ import LayerSwitcherView from './components/views/LayerSwitcherView.jsx';
 import TransportLegendView from './components/views/TransportLegendView.jsx';
 import FloatingActionsView from './components/views/FloatingActionsView.jsx';
 import RouteModesView from './components/views/RouteModesView.jsx';
-import RadiusPanelView from './components/views/RadiusPanelView.jsx';
 import WeatherView from './components/views/WeatherView.jsx';
 import RotationView from './components/views/RotationView.jsx';
 import StatusToastView from './components/views/StatusToastView.jsx';
 
-// ==========================================
 // NAVEGACIÓN
-// ==========================================
 import Sidebar from './components/layout/Sidebar.jsx';
 import SidePanel from './components/layout/SidePanel.jsx';
 
-// ==========================================
 // AUTENTICACIÓN
-// ==========================================
 import AuthModal from './features/auth/AuthModal.jsx';
 import LoginRequired from './features/auth/LoginRequired.jsx';
 import { useAuth } from './features/auth/AuthContext.jsx';
 
-// ==========================================
 // SERVICIOS
-// ==========================================
 import ServicesPage from './features/services/ServicesPage.jsx';
 import PublishService from './features/services/PublishService.jsx';
 
-// ==========================================
 // MOTOR DEL MAPA
-// ==========================================
 import { initializeGeoFastPe } from './engine/geoFastEngine.js';
 
-// MENSAJES PRIVADOS
+// MENSAJES, PERFIL Y CONFIGURACIÓN
 import MessagesPage from './features/messages/MessagesPage.jsx';
-
-// PERFIL PRIVADO
 import ProfilePage from './features/profile/ProfilePage.jsx';
+import ConfigPage from './features/settings/ConfigPage.jsx';
 
-const PRIVATE_SECTIONS = [
-  'Mensajes',
-  'Mi Perfil',
-  'Configuración'
-];
+import {
+  eventsApi,
+  emergencyApi,
+  filesApi,
+  reportsApi,
+  salesApi,
+  servicesApi,
+  solidarityApi
+} from './api/index.js';
+
+const PRIVATE_SECTIONS = ['Mensajes', 'Mi Perfil', 'Configuración'];
 
 export default function App() {
   const { isAuthenticated } = useAuth();
 
-  // ==========================================
-// ESTADOS DE VENTAS
-// ==========================================
-const [salesView, setSalesView] = useState('map');
-const [selectedSale, setSelectedSale] = useState(null);
+  // DATOS DESDE LA API
+  const [sales, setSales] = useState([]);
+  const [donations, setDonations] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [emergencyReports, setEmergencyReports] = useState([]);
+  const [citizenReports, setCitizenReports] = useState([]);
+  const [communityEvents, setCommunityEvents] = useState([]);
+  const [eventsTab, setEventsTab] = useState('proximos');
+  const [servicesCatalog, setServicesCatalog] = useState([]);
+  const [notice, setNotice] = useState('');
+  const [pendingConversationId, setPendingConversationId] = useState(null);
+
+  // VISTAS
+  const [salesView, setSalesView] = useState('map');
+  const [selectedSale, setSelectedSale] = useState(null);
   const [solidarityView, setSolidarityView] = useState('map');
   const [emergencyView, setEmergencyView] = useState('map');
   const [emergencyType, setEmergencyType] = useState('Incendio');
-  const [emergencyReports, setEmergencyReports] = useState([]);
   const [reportsView, setReportsView] = useState('map');
   const [selectedReport, setSelectedReport] = useState(null);
-  const [citizenReports, setCitizenReports] = useState([]);
   const [eventsView, setEventsView] = useState('map');
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [communityEvents, setCommunityEvents] = useState([]);
 
-  // ==========================================
-  // ESTADOS DEL MAPA
-  // ==========================================
+  // MAPA
   const [section, setSection] = useState('Inicio');
   const [services, setServices] = useState([]);
   const [radius, setRadius] = useState(1000);
 
-  // ==========================================
-  // ESTADOS DE SERVICIOS
-  // ==========================================
-  const [showServicesDetail, setShowServicesDetail] =
-    useState(false);
+  // SERVICIOS
+  const [showServicesDetail, setShowServicesDetail] = useState(false);
+  const [showPublishService, setShowPublishService] = useState(false);
+  const [selectedService, setSelectedService] = useState(null);
 
-  const [showPublishService, setShowPublishService] =
-    useState(false);
-
-  const [selectedService, setSelectedService] =
-    useState(null);
-
-  // ==========================================
-  // ESTADOS DE AUTENTICACIÓN
-  // ==========================================
-  const [showLoginRequired, setShowLoginRequired] =
-    useState(false);
-
+  // AUTENTICACIÓN
+  const [showLoginRequired, setShowLoginRequired] = useState(false);
   const [authMode, setAuthMode] = useState(null);
-
-  const [pendingSection, setPendingSection] =
-    useState(null);
-
-  const [pendingAction, setPendingAction] =
-    useState(null);
+  const [pendingSection, setPendingSection] = useState(null);
+  const [pendingAction, setPendingAction] = useState(null);
 
   // ==========================================
-  // INICIALIZACIÓN DEL MAPA
+  // CARGA DE DATOS
+  // ==========================================
+  const showError = (error) => setNotice(error?.message || 'Ocurrió un error inesperado.');
+
+  // Muestra en el mapa la categoría de un registro recién creado.
+const showOnMap = (category, point = null) => {
+  const geo = window.GeoFastPe;
+
+  if (!geo) return;
+
+  if (
+    point &&
+    Number.isFinite(Number(point.lat)) &&
+    Number.isFinite(Number(point.lng))
+  ) {
+    const map = geo.getMap();
+
+    map?.flyTo({
+      center: [Number(point.lng), Number(point.lat)],
+      zoom: 15,
+      essential: true
+    });
+  }
+
+  geo.setCategory(category);
+};
+
+  // SELECCIÓN DE PUNTOS EN EL MAPA: el usuario hace clic y el formulario recibe { lat, lng }.
+  const [picking, setPicking] = useState(false);
+  const cancelPickRef = useRef(null);
+
+  const pickLocation = () => new Promise((resolve, reject) => {
+    const map = window.GeoFastPe?.getMap();
+    if (!map) {
+      reject(new Error('El mapa todavía no está listo.'));
+      return;
+    }
+
+    cancelPickRef.current?.();
+
+    const onClick = (event) => {
+      cancelPickRef.current = null;
+      setPicking(false);
+      resolve({ lat: event.lngLat.lat, lng: event.lngLat.lng });
+    };
+
+    cancelPickRef.current = () => {
+      map.off('click', onClick);
+      cancelPickRef.current = null;
+      setPicking(false);
+      reject(new Error('Selección de ubicación cancelada.'));
+    };
+
+    map.once('click', onClick);
+    setPicking(true);
+  });
+
+  const cancelPick = () => cancelPickRef.current?.();
+
+  const loadSales = async () => {
+    try { setSales(await salesApi.listar()); } catch (error) { showError(error); }
+  };
+
+  const loadSolidarity = async () => {
+    try {
+      const [donaciones, solicitudes] = await Promise.all([
+        solidarityApi.listar({ tipo: 'DONACION' }),
+        solidarityApi.listar({ tipo: 'SOLICITUD' })
+      ]);
+      setDonations(donaciones);
+      setRequests(solicitudes);
+    } catch (error) {
+      showError(error);
+    }
+  };
+
+  const loadEmergencies = async () => {
+    try { setEmergencyReports(await emergencyApi.listar()); } catch (error) { showError(error); }
+  };
+
+  const loadReports = async () => {
+    try { setCitizenReports(await reportsApi.listar()); } catch (error) { showError(error); }
+  };
+
+  const loadEvents = async (tab = eventsTab) => {
+    try {
+      if (tab === 'mios' && !isAuthenticated) {
+        setCommunityEvents([]);
+        return;
+      }
+      setCommunityEvents(await eventsApi.listar({ tab }));
+    } catch (error) {
+      showError(error);
+    }
+  };
+
+  const loadServicesCatalog = async () => {
+    try { setServicesCatalog(await servicesApi.listar()); } catch (error) { showError(error); }
+  };
+
+  // ==========================================
+  // MAPA
   // ==========================================
   useEffect(() => {
     initializeGeoFastPe();
@@ -134,44 +217,32 @@ const [selectedSale, setSelectedSale] = useState(null);
       setRadius(event.detail?.radius ?? 1000);
     };
 
-    window.addEventListener(
-      'geofastpe:services',
-      receive
-    );
+    window.addEventListener('geofastpe:services', receive);
 
     const timer = setInterval(() => {
       if (window.GeoFastPe) {
         const state = window.GeoFastPe.getState();
-
-        if (state) {
-          setRadius(state.radius);
-        }
+        if (state) setRadius(state.radius);
       }
     }, 500);
 
     return () => {
-      window.removeEventListener(
-        'geofastpe:services',
-        receive
-      );
-
+      window.removeEventListener('geofastpe:services', receive);
       clearInterval(timer);
     };
   }, []);
 
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(''), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
   // ==========================================
   // AUTENTICACIÓN
   // ==========================================
-  const requireLogin = (
-    targetSection = null,
-    targetAction = null
-  ) => {
-    setPendingSection(
-      typeof targetSection === 'string'
-        ? targetSection
-        : null
-    );
-
+  const requireLogin = (targetSection = null, targetAction = null) => {
+    setPendingSection(typeof targetSection === 'string' ? targetSection : null);
     setPendingAction(targetAction);
     setAuthMode(null);
     setShowLoginRequired(true);
@@ -199,38 +270,29 @@ const [selectedSale, setSelectedSale] = useState(null);
     setPendingAction(null);
   };
 
-  // ==========================================
-  // ACCESO EN MODO DEMOSTRACIÓN
-  // ==========================================
-  const completeDemoLogin = () => {
+  // Tras iniciar sesión o registrarse, continúa la acción que estaba pendiente.
+  const handleAuthenticated = () => {
     setAuthMode(null);
     setShowLoginRequired(false);
 
-    // Si intentó publicar, abrir el formulario
     if (pendingAction === 'publish-service') {
       setSection('Servicios');
       setShowServicesDetail(true);
       setShowPublishService(true);
-    }
-
-    else if (pendingAction === 'publish-donation' || pendingAction === 'request-help') {
+    } else if (pendingAction === 'publish-donation' || pendingAction === 'request-help') {
       setSection('Solidaridad');
       setSolidarityView(pendingAction === 'publish-donation' ? 'donate' : 'request');
       setSalesView('map');
       setShowServicesDetail(false);
       setShowPublishService(false);
-    }
-
-    else if (pendingAction === 'report-emergency') {
+    } else if (pendingAction === 'report-emergency') {
       setSection('Emergencias');
       setEmergencyView('report');
       setSalesView('map');
       setSolidarityView('map');
       setShowServicesDetail(false);
       setShowPublishService(false);
-    }
-
-    else if (pendingAction === 'create-report') {
+    } else if (pendingAction === 'create-report') {
       setSection('Reportes');
       setReportsView('create');
       setSalesView('map');
@@ -238,9 +300,7 @@ const [selectedSale, setSelectedSale] = useState(null);
       setEmergencyView('map');
       setShowServicesDetail(false);
       setShowPublishService(false);
-    }
-
-    else if (pendingAction === 'create-event') {
+    } else if (pendingAction === 'create-event') {
       setSection('Eventos');
       setEventsView('create');
       setSalesView('map');
@@ -249,17 +309,12 @@ const [selectedSale, setSelectedSale] = useState(null);
       setReportsView('map');
       setShowServicesDetail(false);
       setShowPublishService(false);
-    }
-
-    else if (pendingAction === 'publish-sale') {
+    } else if (pendingAction === 'publish-sale') {
       setSection('Ventas');
       setSalesView('publish');
       setShowServicesDetail(false);
       setShowPublishService(false);
-    }
-
-    // Si intentó entrar a una sección privada
-    else if (pendingSection) {
+    } else if (pendingSection) {
       setSection(pendingSection);
       setShowServicesDetail(false);
       setShowPublishService(false);
@@ -268,9 +323,6 @@ const [selectedSale, setSelectedSale] = useState(null);
       setEmergencyView('map');
     }
 
-    // Si inició sesión desde el panel derecho,
-    // permanecer en la pantalla actual.
-
     setPendingSection(null);
     setPendingAction(null);
   };
@@ -278,24 +330,17 @@ const [selectedSale, setSelectedSale] = useState(null);
   // ==========================================
   // NAVEGACIÓN DEL SIDEBAR
   // ==========================================
-  const selectSection = (
-    name,
-    category = 'Todos'
-  ) => {
-    // Solo estas secciones requieren sesión
-    if (
-      PRIVATE_SECTIONS.includes(name) &&
-      !isAuthenticated
-    ) {
-      requireLogin(name);
+  const selectSection = (name, category = 'Todos') => {
+    cancelPickRef.current?.();
+    // El menú usa "Emergencias (SOS)" y las vistas usan "Emergencias".
+    const destino = name === 'Emergencias (SOS)' ? 'Emergencias' : name;
+
+    if (PRIVATE_SECTIONS.includes(destino) && !isAuthenticated) {
+      requireLogin(destino);
       return;
     }
 
-    // Servicios sigue siendo público
-    setSection(name);
-
-    // Regresar siempre al mapa al seleccionar
-    // una opción del Sidebar
+    setSection(destino);
     setShowServicesDetail(false);
     setShowPublishService(false);
     setSelectedService(null);
@@ -308,26 +353,14 @@ const [selectedSale, setSelectedSale] = useState(null);
     setEventsView('map');
     setSelectedEvent(null);
 
-    const selectedCategory =
-      PRIVATE_SECTIONS.includes(name)
-        ? 'Todos'
-        : category;
+    const selectedCategory = PRIVATE_SECTIONS.includes(destino) ? 'Todos' : category;
 
-    // Mantener el filtrado original del mapa
     if (window.GeoFastPe) {
-      window.GeoFastPe.setCategory(
-        selectedCategory
-      );
+      window.GeoFastPe.setCategory(selectedCategory);
     } else {
-      window.addEventListener(
-        'geofastpe:services',
-        () => {
-          window.GeoFastPe?.setCategory(
-            selectedCategory
-          );
-        },
-        { once: true }
-      );
+      window.addEventListener('geofastpe:services', () => {
+        window.GeoFastPe?.setCategory(selectedCategory);
+      }, { once: true });
     }
   };
 
@@ -336,72 +369,62 @@ const [selectedSale, setSelectedSale] = useState(null);
   // ==========================================
   const changeRadius = (value) => {
     setRadius(value);
-
-    const slider = document.getElementById(
-      'radius-slider'
-    );
-
-    if (slider) {
-      slider.value = String(value);
-
-      slider.dispatchEvent(
-        new Event('input', {
-          bubbles: true
-        })
-      );
-    }
+    window.GeoFastPe?.setRadius(value);
   };
 
   // ==========================================
-  // ABRIR SERVICIOS DESDE EL PANEL DERECHO
+  // SERVICIOS
   // ==========================================
-  const openServicesDetail = (service) => {
-    setSelectedService(service ?? null);
-
+  const openServicesDetail = async (point) => {
     setShowPublishService(false);
     setShowServicesDetail(true);
+    setSelectedService(null);
+
+    if (point?.kind === 'SERVICIO' && point.id != null) {
+      try {
+        setSelectedService(await servicesApi.obtenerPorId(point.id));
+      } catch (error) {
+        showError(error);
+      }
+    }
+    loadServicesCatalog();
   };
 
-  // ==========================================
-  // PUBLICAR SERVICIO
-  // ==========================================
   const openPublishService = () => {
     if (!isAuthenticated) {
-      requireLogin(
-        null,
-        'publish-service'
-      );
+      requireLogin(null, 'publish-service');
       return;
     }
-
     setSection('Servicios');
     setShowServicesDetail(true);
     setShowPublishService(true);
   };
 
-  // ==========================================
-  // REGRESAR AL LISTADO DE SERVICIOS
-  // ==========================================
+  const submitService = async (data) => {
+    const image = await filesApi.resolverImagen(data.image);
+    await servicesApi.crear({ ...data, image });
+    await loadServicesCatalog();
+    showOnMap('Servicios');
+    setShowPublishService(false);
+    setShowServicesDetail(true);
+    setSelectedService(null);
+  };
+
   const backToServices = () => {
     setShowPublishService(false);
     setShowServicesDetail(true);
   };
 
-  // ==========================================
-  // REGRESAR AL MAPA
-  // ==========================================
   const backToMap = () => {
     setShowServicesDetail(false);
     setShowPublishService(false);
     setSelectedService(null);
-
     setSection('Servicios');
-
     window.GeoFastPe?.setCategory('Servicios');
   };
 
   // ==========================================
-  // NAVEGACIÓN DE VENTAS
+  // VENTAS
   // ==========================================
   const openSalesCatalog = () => {
     setSection('Ventas');
@@ -409,6 +432,7 @@ const [selectedSale, setSelectedSale] = useState(null);
     setShowPublishService(false);
     setSelectedSale(null);
     setSalesView('catalog');
+    loadSales();
   };
 
   const openSaleDetail = (product) => {
@@ -428,10 +452,31 @@ const [selectedSale, setSelectedSale] = useState(null);
     setSalesView('publish');
   };
 
+  const submitSale = async (data) => {
+    const image = await filesApi.resolverImagen(data.image);
+    await salesApi.crear({ ...data, image });
+    await loadSales();
+    showOnMap('Ventas');
+    setSalesView('catalog');
+  };
+
+  const contactSeller = async (product) => {
+    if (!isAuthenticated) {
+      requireLogin();
+      throw new Error('Inicia sesión para contactar al vendedor.');
+    }
+    const conversacion = await salesApi.contactar(product.id);
+    setPendingConversationId(conversacion.id);
+    setSalesView('map');
+    setSelectedSale(null);
+    setSection('Mensajes');
+  };
+
   const backToSales = () => {
     setSection('Ventas');
     setSelectedSale(null);
     setSalesView('catalog');
+    loadSales();
   };
 
   const backToSalesMap = () => {
@@ -442,7 +487,7 @@ const [selectedSale, setSelectedSale] = useState(null);
   };
 
   // ==========================================
-  // NAVEGACIÓN DE SOLIDARIDAD
+  // SOLIDARIDAD
   // ==========================================
   const openSolidarity = () => {
     setSection('Solidaridad');
@@ -450,6 +495,7 @@ const [selectedSale, setSelectedSale] = useState(null);
     setShowPublishService(false);
     setSalesView('map');
     setSolidarityView('catalog');
+    loadSolidarity();
   };
 
   const openSolidarityForm = (kind) => {
@@ -467,8 +513,41 @@ const [selectedSale, setSelectedSale] = useState(null);
     window.GeoFastPe?.setCategory('Solidaridad');
   };
 
+  const submitDonation = async (data) => {
+    const image = await filesApi.resolverImagen(data.image);
+    await solidarityApi.crear({ ...data, image });
+    await loadSolidarity();
+    showOnMap('Solidaridad');
+    setSolidarityView('catalog');
+  };
+
+  const submitRequest = async (data) => {
+    const image = await filesApi.resolverImagen(data.image);
+    await solidarityApi.crear({ ...data, image });
+    await loadSolidarity();
+    showOnMap('Solidaridad');
+    setSolidarityView('catalog');
+  };
+
+  const toggleFavorite = async (item) => {
+    if (!isAuthenticated) {
+      requireLogin();
+      return;
+    }
+    try {
+      if (item.favorito) {
+        await solidarityApi.quitarFavorito(item.id);
+      } else {
+        await solidarityApi.marcarFavorito(item.id);
+      }
+      await loadSolidarity();
+    } catch (error) {
+      showError(error);
+    }
+  };
+
   // ==========================================
-  // EMERGENCIAS SOS (demostración en memoria)
+  // EMERGENCIAS
   // ==========================================
   const openEmergencies = () => {
     setSection('Emergencias');
@@ -477,6 +556,7 @@ const [selectedSale, setSelectedSale] = useState(null);
     setShowServicesDetail(false);
     setShowPublishService(false);
     setEmergencyView('catalog');
+    loadEmergencies();
   };
 
   const openEmergencyForm = (type = 'Incendio') => {
@@ -489,19 +569,22 @@ const [selectedSale, setSelectedSale] = useState(null);
     setEmergencyView('report');
   };
 
-  const saveEmergencyReport = (report) => {
-    setEmergencyReports((previous) => [report, ...previous]);
+  const submitEmergency = async (data) => {
+    const images = await filesApi.resolverImagenes(data.images);
+    await emergencyApi.crear({ ...data, images });
+    await loadEmergencies();
+    showOnMap('Emergencia');
     setEmergencyView('catalog');
   };
 
   const backToEmergenciesMap = () => {
     setSection('Emergencias');
     setEmergencyView('map');
-    window.GeoFastPe?.setCategory('Emergencias');
+    window.GeoFastPe?.setCategory('Emergencia');
   };
 
   // ==========================================
-  // REPORTES COMUNITARIOS (estado local)
+  // REPORTES
   // ==========================================
   const openReports = () => {
     setSection('Reportes');
@@ -511,6 +594,7 @@ const [selectedSale, setSelectedSale] = useState(null);
     setShowServicesDetail(false);
     setShowPublishService(false);
     setReportsView('catalog');
+    loadReports();
   };
 
   const openCreateReport = () => {
@@ -528,8 +612,10 @@ const [selectedSale, setSelectedSale] = useState(null);
     setReportsView('detail');
   };
 
-  const saveCitizenReport = (report) => {
-    setCitizenReports((previous) => [report, ...previous]);
+  const submitReport = async (data) => {
+    const images = await filesApi.resolverImagenes(data.images);
+    await reportsApi.crear({ ...data, images });
+    await loadReports();
     setReportsView('catalog');
   };
 
@@ -540,7 +626,7 @@ const [selectedSale, setSelectedSale] = useState(null);
   };
 
   // ==========================================
-  // EVENTOS COMUNITARIOS (estado local)
+  // EVENTOS
   // ==========================================
   const openEvents = () => {
     setSection('Eventos');
@@ -551,6 +637,13 @@ const [selectedSale, setSelectedSale] = useState(null);
     setShowServicesDetail(false);
     setShowPublishService(false);
     setEventsView('catalog');
+    setEventsTab('proximos');
+    loadEvents('proximos');
+  };
+
+  const changeEventsTab = (tab) => {
+    setEventsTab(tab);
+    loadEvents(tab);
   };
 
   const openCreateEvent = () => {
@@ -568,9 +661,26 @@ const [selectedSale, setSelectedSale] = useState(null);
     setEventsView('detail');
   };
 
-  const saveCommunityEvent = (event) => {
-    setCommunityEvents((previous) => [event, ...previous]);
+  const submitEvent = async (data) => {
+    const image = await filesApi.resolverImagen(data.image);
+    await eventsApi.crear({ ...data, image });
+    setEventsTab('proximos');
+    await loadEvents('proximos');
     setEventsView('catalog');
+  };
+
+  const toggleParticipation = async (event) => {
+    if (!isAuthenticated) {
+      requireLogin();
+      throw new Error('Inicia sesión para participar en el evento.');
+    }
+    if (event.joined) {
+      await eventsApi.dejarDeParticipar(event.id);
+    } else {
+      await eventsApi.participar(event.id);
+    }
+    setSelectedEvent(await eventsApi.obtenerPorId(event.id));
+    await loadEvents(eventsTab);
   };
 
   const backToEventsMap = () => {
@@ -585,13 +695,12 @@ const [selectedSale, setSelectedSale] = useState(null);
   useEffect(() => {
     if (!isAuthenticated) {
       setShowPublishService(false);
-      setSalesView((current) => current === 'publish' ? 'catalog' : current);
-      setSolidarityView((current) => ['donate', 'request'].includes(current) ? 'catalog' : current);
-      setEmergencyView((current) => current === 'report' ? 'catalog' : current);
-      setReportsView((current) => current === 'create' ? 'catalog' : current);
-      setEventsView((current) => current === 'create' ? 'catalog' : current);
+      setSalesView((current) => (current === 'publish' ? 'catalog' : current));
+      setSolidarityView((current) => (['donate', 'request'].includes(current) ? 'catalog' : current));
+      setEmergencyView((current) => (current === 'report' ? 'catalog' : current));
+      setReportsView((current) => (current === 'create' ? 'catalog' : current));
+      setEventsView((current) => (current === 'create' ? 'catalog' : current));
 
-      // Servicios NO es privado
       if (PRIVATE_SECTIONS.includes(section)) {
         setSection('Inicio');
       }
@@ -601,76 +710,59 @@ const [selectedSale, setSelectedSale] = useState(null);
   // ==========================================
   // CONTROL DE VISTAS
   // ==========================================
-  const showServicesPage =
-    showServicesDetail || showPublishService;
-
+  const showServicesPage = showServicesDetail || showPublishService;
   const showSalesPage = section === 'Ventas' && salesView !== 'map';
-
   const showSolidarityPage = section === 'Solidaridad' && solidarityView !== 'map';
-
   const showEmergencyPage = section === 'Emergencias' && emergencyView !== 'map';
-
   const showReportsPage = section === 'Reportes' && reportsView !== 'map';
   const showEventsPage = section === 'Eventos' && eventsView !== 'map';
   const showMessagesPage = section === 'Mensajes' && isAuthenticated;
   const showProfilePage = section === 'Mi Perfil' && isAuthenticated;
+  const showConfigPage = section === 'Configuración';
 
-  const showMapInterface =
-    !showServicesPage && !showSalesPage && !showSolidarityPage && !showEmergencyPage && !showReportsPage && !showEventsPage && !showMessagesPage && !showProfilePage;
+  const showMapInterface = picking || (!showServicesPage && !showSalesPage && !showSolidarityPage && !showEmergencyPage
+    && !showReportsPage && !showEventsPage && !showMessagesPage && !showProfilePage && !showConfigPage);
 
-  // ==========================================
-  // INTERFAZ PRINCIPAL
-  // ==========================================
+  const backButton = (onClick) => (
+    <button type="button" className="publish-back" onClick={onClick} style={{ margin: '16px 0 0 32px' }}>
+      ← Volver al mapa
+    </button>
+  );
+
   return (
     <main className="geofastpe-app">
+      {picking && (
+        <div role="status" style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 3000, background: '#7c3aed', color: '#fff', padding: '10px 14px 10px 18px', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span>Haz clic en el mapa para marcar la ubicación</span>
+          <button type="button" onClick={cancelPick} style={{ background: '#fff', color: '#5b21b6', border: 0, borderRadius: 8, padding: '6px 10px', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+        </div>
+      )}
 
-      {/* =====================================
-          MAPA ORIGINAL
-          NO SE DESMONTA AL CAMBIAR DE VISTA
-      ===================================== */}
-      <div
-        className={`geofastpe-map-workspace ${
-          showMapInterface
-            ? ''
-            : 'workspace-hidden'
-        }`}
-      >
+      {notice && (
+        <div role="status" onClick={() => setNotice('')} style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 3000, background: '#1e293b', color: '#fff', padding: '10px 18px', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', cursor: 'pointer', maxWidth: '90vw' }}>
+          {notice}
+        </div>
+      )}
+
+      {/* MAPA: no se desmonta al cambiar de vista */}
+      <div className={`geofastpe-map-workspace ${showMapInterface ? '' : 'workspace-hidden'}`}>
         <MapView />
-
         <ConnectivityView />
         <SearchView />
         <LayerSwitcherView />
         <TransportLegendView />
         <FloatingActionsView />
         <RouteModesView />
-        <RadiusPanelView />
         <WeatherView />
         <RotationView />
         <StatusToastView />
       </div>
 
-      {/* =====================================
-          ESTRUCTURA PRINCIPAL
-      ===================================== */}
       <div className="app-shell">
+        <Sidebar section={section} onSelectSection={selectSection} onRequireLogin={requireLogin} />
 
-        {/* SIDEBAR */}
-        <Sidebar
-          section={section}
-          onSelectSection={selectSection}
-          onRequireLogin={requireLogin}
-        />
+        <div className={`geofastpe-panel-workspace ${showMapInterface ? '' : 'workspace-hidden'}`}>
 
-        {/* =================================
-            PANEL DERECHO DEL MAPA
-        ================================= */}
-        <div
-          className={`geofastpe-panel-workspace ${
-            showMapInterface
-              ? ''
-              : 'workspace-hidden'
-          }`}
-        >
           <SidePanel
             section={section}
             services={services}
@@ -678,220 +770,202 @@ const [selectedSale, setSelectedSale] = useState(null);
             onRadiusChange={changeRadius}
             onLogin={openLogin}
             onRegister={openRegister}
+
+            // Servicios
             onViewService={openServicesDetail}
+            onPublishService={openPublishService}
+
+            // Ventas
             onViewSalesCatalog={openSalesCatalog}
+            onPublishSale={openPublishSale}
+
+            // Solidaridad
             onViewSolidarity={openSolidarity}
+            onPublishDonation={() => openSolidarityForm('donate')}
+            onRequestHelp={() => openSolidarityForm('request')}
+
+            // Emergencias
             onViewEmergencies={openEmergencies}
+            onReportEmergency={() => openEmergencyForm()}
             emergencyReports={emergencyReports}
+
+            // Reportes
             onViewReports={openReports}
+            onCreateReport={openCreateReport}
             citizenReports={citizenReports}
+
+            // Eventos
             onViewEvents={openEvents}
+            onCreateEvent={openCreateEvent}
             communityEvents={communityEvents}
           />
+
+
         </div>
 
-        {/* =================================
-            PÁGINA COMPLETA DE SERVICIOS
-            SOLO SE ABRE DESDE EL PANEL
-        ================================= */}
         {showServicesPage && (
-          <div className="geofastpe-content-workspace">
-
+  <div
+    className="geofastpe-content-workspace"
+    style={{ display: picking ? 'none' : undefined }}
+  >
             {showPublishService ? (
-              <PublishService
-                onBack={backToServices}
-              />
+              <PublishService onBack={backToServices} onSubmit={submitService} onPickLocation={pickLocation} />
             ) : (
               <div>
-                <button
-                  type="button"
-                  className="publish-back"
-                  onClick={backToMap}
-                  style={{
-                    margin: '16px 0 0 32px'
-                  }}
-                >
-                  ← Volver al mapa
-                </button>
-
+                {backButton(backToMap)}
                 <ServicesPage
-                  services={
-                    selectedService
-                      ? [selectedService]
-                      : services
-                  }
+                  services={selectedService ? [selectedService] : servicesCatalog}
                   onCreateService={openPublishService}
-                  onRequireLogin={() => {
-                    requireLogin(
-                      null,
-                      'publish-service'
-                    );
-                  }}
+                  onRequireLogin={() => requireLogin(null, 'publish-service')}
                 />
               </div>
             )}
-
           </div>
         )}
 
-        {/* SOLIDARIDAD: LISTADO, SOLICITUD Y DONACIÓN */}
-        {showSolidarityPage && (
-          <div className="geofastpe-content-workspace">
+{/* SOLIDARIDAD: ocultar formulario mientras se selecciona ubicación.
+    Mantener el componente montado conserva los datos ingresados.
+    Aplica a donaciones y solicitudes de ayuda. */}
+{showSolidarityPage && (
+  <div
+    className="geofastpe-content-workspace"
+    style={{ display: picking ? 'none' : undefined }}
+  >
             {solidarityView === 'donate' ? (
-              <PublishDonation onBack={openSolidarity} />
+              <PublishDonation onBack={openSolidarity} onSubmitDonation={submitDonation} onPickLocation={pickLocation} />
             ) : solidarityView === 'request' ? (
-              <RequestHelp onBack={openSolidarity} />
+              <RequestHelp onBack={openSolidarity} onSubmitRequest={submitRequest} onPickLocation={pickLocation} />
             ) : (
               <div>
-                <button
-                  type="button"
-                  className="publish-back"
-                  onClick={backToSolidarityMap}
-                  style={{ margin: '16px 0 0 32px' }}
-                >
-                  ← Volver al mapa
-                </button>
+                {backButton(backToSolidarityMap)}
                 <SolidarityPage
+                  donations={donations}
+                  requests={requests}
                   onPublishDonation={() => openSolidarityForm('donate')}
                   onRequestHelp={() => openSolidarityForm('request')}
+                  onToggleFavorite={toggleFavorite}
                 />
               </div>
             )}
           </div>
         )}
 
-        {/* EMERGENCIAS: LISTADO Y FORMULARIO */}
-        {showEmergencyPage && (
-          <div className="geofastpe-content-workspace">
+{showEmergencyPage && (
+  <div
+    className="geofastpe-content-workspace"
+    style={{ display: picking ? 'none' : undefined }}
+  >
             {emergencyView === 'report' ? (
-              <ReportEmergency
-                initialType={emergencyType}
-                onBack={openEmergencies}
-                onSubmit={saveEmergencyReport}
-              />
+              <ReportEmergency initialType={emergencyType} onBack={openEmergencies} onSubmit={submitEmergency} onPickLocation={pickLocation} />
             ) : (
               <div>
-                <button type="button" className="publish-back" onClick={backToEmergenciesMap} style={{ margin: '16px 0 0 32px' }}>
-                  ← Volver al mapa
-                </button>
+                {backButton(backToEmergenciesMap)}
                 <EmergencyPage reports={emergencyReports} onReport={openEmergencyForm} />
               </div>
             )}
           </div>
         )}
 
-        {/* REPORTES: LISTADO, CREACIÓN Y DETALLE */}
-        {showReportsPage && (
-          <div className="geofastpe-content-workspace">
+{/* REPORTES: mostrar mapa durante la selección del punto.
+    TODO: permitir visualizar la ubicación de reportes existentes. */}
+{showReportsPage && (
+  <div
+    className="geofastpe-content-workspace"
+    style={{ display: picking ? 'none' : undefined }}
+  >
             {reportsView === 'create' ? (
-              <CreateReport onBack={openReports} onSubmitReport={saveCitizenReport} />
+              <CreateReport onBack={openReports} onSubmitReport={submitReport} onPickLocation={pickLocation} />
             ) : reportsView === 'detail' ? (
               <ReportDetail report={selectedReport} onBack={openReports} />
             ) : (
               <div>
-                <button type="button" className="publish-back" onClick={backToReportsMap} style={{ margin: '16px 0 0 32px' }}>
-                  ← Volver al mapa
-                </button>
-                <ReportsPage
-                  reports={[...citizenReports, ...demoReports]}
-                  onCreateReport={openCreateReport}
-                  onViewReport={openReportDetail}
-                />
+                {backButton(backToReportsMap)}
+                <ReportsPage reports={citizenReports} onCreateReport={openCreateReport} onViewReport={openReportDetail} />
               </div>
             )}
           </div>
         )}
 
-        {/* EVENTOS: CATÁLOGO, CREACIÓN Y DETALLE */}
-        {showEventsPage && (
-          <div className="geofastpe-content-workspace">
+{/* ==========================================
+    EVENTOS: SELECCIÓN DE UBICACIÓN EN EL MAPA
+
+    Cuando picking es true:
+    - Ocultamos temporalmente el formulario.
+    - Mostramos el mapa de GeoFastPe.
+    - Conservamos los datos ingresados.
+    - Al seleccionar el punto, vuelve el formulario.
+
+    TODO:
+    - Mostrar una vista previa del punto elegido.
+    - Permitir cambiar la ubicación.
+    - Centrar el mapa en el evento publicado.
+========================================== */}
+
+{showEventsPage && (
+  <div
+    className="geofastpe-content-workspace"
+    style={{ display: picking ? 'none' : undefined }}
+  >
             {eventsView === 'create' ? (
-              <CreateEvent onBack={openEvents} onSubmitEvent={saveCommunityEvent} />
+              <CreateEvent onBack={openEvents} onSubmitEvent={submitEvent} onPickLocation={pickLocation} />
             ) : eventsView === 'detail' ? (
-              <EventDetail event={selectedEvent} onBack={openEvents} />
+              <EventDetail event={selectedEvent} onBack={openEvents} onToggleParticipation={toggleParticipation} />
             ) : (
               <div>
-                <button type="button" className="publish-back" onClick={backToEventsMap} style={{ margin: '16px 0 0 32px' }}>
-                  ← Volver al mapa
-                </button>
-                <EventsPage
-                  events={[...communityEvents, ...demoEvents]}
-                  onCreateEvent={openCreateEvent}
-                  onViewEvent={openEventDetail}
-                />
+                {backButton(backToEventsMap)}
+                <EventsPage events={communityEvents} onCreateEvent={openCreateEvent} onViewEvent={openEventDetail} onTabChange={changeEventsTab} />
               </div>
             )}
           </div>
         )}
 
-        {/* MENSAJES: VISTA PRIVADA, SOLO CON SESIÓN ACTIVA */}
         {showMessagesPage && (
           <div className="geofastpe-content-workspace">
-            <MessagesPage isAuthenticated={isAuthenticated} />
+            <MessagesPage
+              isAuthenticated={isAuthenticated}
+              initialConversationId={pendingConversationId}
+            />
           </div>
         )}
 
-        {/* MI PERFIL: VISTA PRIVADA, SOLO CON SESIÓN ACTIVA */}
         {showProfilePage && (
           <div className="geofastpe-content-workspace">
-            <ProfilePage isAuthenticated={isAuthenticated} />
+            <ProfilePage onRequireLogin={() => requireLogin('Mi Perfil')} />
           </div>
         )}
 
-        {/* VENTAS: CATÁLOGO, DETALLE Y PUBLICACIÓN */}
-        {showSalesPage && (
+        {showConfigPage && (
           <div className="geofastpe-content-workspace">
+            <ConfigPage onRequireLogin={() => requireLogin('Configuración')} />
+          </div>
+        )}
+
+{showSalesPage && (
+  <div
+    className="geofastpe-content-workspace"
+    style={{ display: picking ? 'none' : undefined }}
+  >
             {salesView === 'publish' ? (
-              <PublishSale onBack={backToSales} />
+              <PublishSale onBack={backToSales} onSubmitSale={submitSale} onPickLocation={pickLocation} />
             ) : salesView === 'detail' ? (
-              <SaleDetail
-                product={selectedSale}
-                onBack={backToSales}
-              />
+              <SaleDetail product={selectedSale} onBack={backToSales} onContactSeller={contactSeller} />
             ) : (
               <div>
-                <button
-                  type="button"
-                  className="publish-back"
-                  onClick={backToSalesMap}
-                  style={{ margin: '16px 0 0 32px' }}
-                >
-                  ← Volver al mapa
-                </button>
-                <SalesPage
-                  onCreateSale={openPublishSale}
-                  onViewSale={openSaleDetail}
-                />
+                {backButton(backToSalesMap)}
+                <SalesPage products={sales} onCreateSale={openPublishSale} onViewSale={openSaleDetail} />
               </div>
             )}
           </div>
         )}
-
       </div>
 
-      {/* =====================================
-          AVISO DE AUTENTICACIÓN
-      ===================================== */}
       {showLoginRequired && (
-        <LoginRequired
-          onClose={closeLoginRequired}
-          onLogin={openLogin}
-          onRegister={openRegister}
-        />
+        <LoginRequired onClose={closeLoginRequired} onLogin={openLogin} onRegister={openRegister} />
       )}
 
-      {/* =====================================
-          LOGIN Y REGISTRO
-      ===================================== */}
       {authMode && (
-        <AuthModal
-          key={authMode}
-          mode={authMode}
-          onClose={closeAuth}
-          onDemoLogin={completeDemoLogin}
-        />
+        <AuthModal key={authMode} mode={authMode} onClose={closeAuth} onAuthenticated={handleAuthenticated} />
       )}
-
     </main>
   );
 }
