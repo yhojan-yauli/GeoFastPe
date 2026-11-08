@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { MapPin, Phone, Search, Wrench } from 'lucide-react';
+import { MapPin, Phone, Search, Wrench, Star, X } from 'lucide-react';
+import { ratingsApi } from '../../api/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import './ServicesPage.css';
 
@@ -13,6 +14,10 @@ export default function ServicesPage({
   const { isAuthenticated } = useAuth();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Todos');
+  const [ratingTarget, setRatingTarget] = useState(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [ratingNotice, setRatingNotice] = useState('');
 
   const filteredServices = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -87,6 +92,11 @@ export default function ServicesPage({
                 {service.phone && (
                   <a href={`tel:${service.phone}`}><Phone size={14} /> {service.phone}</a>
                 )}
+                {isAuthenticated && service.ownerId && (
+                  <button type="button" className="services-rate-button" onClick={() => { setRatingTarget(service); setRatingNotice(''); }}>
+                    <Star size={14}/> Reseñar a @{service.ownerUsername || service.ownerName || 'usuario'}
+                  </button>
+                )}
               </div>
             </article>
           ))
@@ -97,6 +107,15 @@ export default function ServicesPage({
           </div>
         )}
       </div>
+      {ratingTarget && <div className="services-rating-shade" onClick={() => setRatingTarget(null)}>
+        <form className="services-rating-modal" onClick={e => e.stopPropagation()} onSubmit={async e => { e.preventDefault(); try { await ratingsApi.crear({ reviewedId: ratingTarget.ownerId, serviceId: ratingTarget.id, rating, comment }); setRatingNotice('Reseña guardada correctamente.'); setTimeout(() => setRatingTarget(null), 700); } catch (err) { setRatingNotice(err.message || 'No se pudo guardar la reseña.'); } }}>
+          <button type="button" className="services-rating-close" onClick={() => setRatingTarget(null)}><X size={18}/></button>
+          <h2>Reseñar servicio</h2><p>{ratingTarget.title} · {ratingTarget.ownerName || 'Usuario'}</p>
+          <div className="services-rating-stars">{[1,2,3,4,5].map(n => <button type="button" key={n} className={n <= rating ? 'on' : ''} onClick={() => setRating(n)}><Star size={28} fill="currentColor"/></button>)}</div>
+          <textarea value={comment} onChange={e=>setComment(e.target.value)} maxLength={500} placeholder="¿Cómo fue el servicio?"/>
+          {ratingNotice && <small>{ratingNotice}</small>}<button className="services-rate-submit">Guardar reseña</button>
+        </form>
+      </div>}
     </section>
   );
 }

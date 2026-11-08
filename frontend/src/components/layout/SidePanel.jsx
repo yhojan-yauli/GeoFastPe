@@ -149,6 +149,7 @@ export default function SidePanel({
 }) {
   const [selectedPublication, setSelectedPublication] =
     useState(null);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     setSelectedPublication(null);
@@ -520,7 +521,8 @@ export default function SidePanel({
   };
 
   return (
-    <aside className="right-panel">
+    <aside className={`right-panel ${collapsed ? "collapsed" : ""}`}>
+      <button type="button" className="gf-panel-toggle" onClick={() => setCollapsed(v => !v)} aria-label={collapsed ? "Mostrar panel" : "Ocultar panel"}>{collapsed ? <ArrowRight size={18} /> : <ArrowRight size={18} style={{ transform: "rotate(180deg)" }} />}</button>
       {selectedPublication ? (
         <PublicationDetailView
           publication={selectedPublication}

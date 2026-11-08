@@ -51,6 +51,7 @@ import { initializeGeoFastPe } from './engine/geoFastEngine.js';
 import MessagesPage from './features/messages/MessagesPage.jsx';
 import ProfilePage from './features/profile/ProfilePage.jsx';
 import ConfigPage from './features/settings/ConfigPage.jsx';
+import GeoFastAssistant from './components/GeoFastAssistant.jsx';
 
 import {
   eventsApi,
@@ -404,7 +405,8 @@ const showOnMap = (category, point = null) => {
 
   const submitService = async (data) => {
     const image = await filesApi.resolverImagen(data.image);
-    await servicesApi.crear({ ...data, image });
+    const created = await servicesApi.crear({ ...data, image });
+    showOnMap('Servicios', created);
     await loadServicesCatalog();
     showOnMap('Servicios');
     setShowPublishService(false);
@@ -456,7 +458,8 @@ const showOnMap = (category, point = null) => {
 
   const submitSale = async (data) => {
     const image = await filesApi.resolverImagen(data.image);
-    await salesApi.crear({ ...data, image });
+    const created = await salesApi.crear({ ...data, image });
+    showOnMap('Ventas', created);
     await loadSales();
     showOnMap('Ventas');
     setSalesView('catalog');
@@ -616,7 +619,8 @@ const showOnMap = (category, point = null) => {
 
   const submitReport = async (data) => {
     const images = await filesApi.resolverImagenes(data.images);
-    await reportsApi.crear({ ...data, images });
+    const created = await reportsApi.crear({ ...data, images });
+    showOnMap('Reportes', created);
     await loadReports();
     setReportsView('catalog');
   };
@@ -665,7 +669,8 @@ const showOnMap = (category, point = null) => {
 
   const submitEvent = async (data) => {
     const image = await filesApi.resolverImagen(data.image);
-    await eventsApi.crear({ ...data, image });
+    const created = await eventsApi.crear({ ...data, image });
+    showOnMap('Eventos', created);
     setEventsTab('proximos');
     await loadEvents('proximos');
     setEventsView('catalog');
@@ -990,6 +995,8 @@ const showOnMap = (category, point = null) => {
       {authMode && (
         <AuthModal key={authMode} mode={authMode} onClose={closeAuth} onAuthenticated={handleAuthenticated} />
       )}
+
+      <GeoFastAssistant onSelectSection={selectSection} />
     </main>
   );
 }
