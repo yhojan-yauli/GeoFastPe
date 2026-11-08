@@ -29,6 +29,8 @@ public final class Filtros {
 
     /** Sin coordenadas de referencia no se filtra; sin coordenadas del punto no entra en el radio. */
     public static boolean dentroDelRadio(Double lat, Double lng, Double radio, Double pLat, Double pLng) {
+        Validaciones.requerirCoordenadas(lat, lng);
+        Validaciones.requerirRadio(radio);
         if (lat == null || lng == null) {
             return true;
         }

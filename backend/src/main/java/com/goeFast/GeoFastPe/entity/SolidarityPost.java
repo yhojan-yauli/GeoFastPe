@@ -72,6 +72,16 @@ public class SolidarityPost {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(length = 30)
+    private EstadoAyuda estadoAyuda;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "voluntario_id")
+    private User voluntario;
+
+    private Instant entregaReportadaEn;
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

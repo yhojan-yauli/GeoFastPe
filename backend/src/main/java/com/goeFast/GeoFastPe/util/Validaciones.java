@@ -34,12 +34,16 @@ public final class Validaciones {
     }
 
     public static void requerirCoordenadas(Double lat, Double lng) {
-        if (lat == null || lng == null) {
-            return;
-        }
-        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        if (lat == null && lng == null) return;
+        if (lat == null || lng == null || !Double.isFinite(lat) || !Double.isFinite(lng)
+                || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Coordenadas fuera de rango.");
         }
+    }
+
+    public static void requerirRadio(Double radio) {
+        requerir(radio == null || (Double.isFinite(radio) && radio > 0 && radio <= 50000),
+                "El radio debe ser finito, mayor que cero y no superar 50000 metros.");
     }
 
     public static void requerir(boolean condicion, String mensaje) {

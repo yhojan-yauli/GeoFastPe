@@ -22,7 +22,9 @@ public record ServiceResponse(
         String availability,
         String image,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        double rating,
+        long recommendationCount
 ) {
 
     public static ServiceResponse from(ServiceListing s) {
@@ -30,7 +32,7 @@ public record ServiceResponse(
                 s.getId(), s.getOwner().getId(), s.getOwner().getName(),
                 s.getTitle(), s.getCategory(), s.getType(), s.getDescription(), s.getPhone(),
                 s.getLocationType(), s.getAddress(), s.getLatitude(), s.getLongitude(),
-                s.getAvailability(), s.getImage(), s.getCreatedAt(), s.getUpdatedAt()
+                s.getAvailability(), s.getImage(), s.getCreatedAt(), s.getUpdatedAt(), s.getRating(), s.getRecommendationCount()
         );
     }
 }

@@ -23,7 +23,10 @@ public record SolidarityResponse(
         String status,
         boolean favorito,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        com.goeFast.GeoFastPe.entity.EstadoAyuda estadoAyuda,
+        Long voluntarioId,
+        Instant entregaReportadaEn
 ) {
 
     public static SolidarityResponse from(SolidarityPost p, boolean favorito) {
@@ -31,7 +34,11 @@ public record SolidarityResponse(
                 p.getId(), p.getOwner().getId(), p.getOwner().getName(),
                 p.getTipo(), p.getTitle(), p.getCategory(), p.getDescription(), p.getCondition(),
                 p.getUrgency(), p.getLocation(), p.getLat(), p.getLng(), p.getImage(), p.getStatus(),
-                favorito, p.getCreatedAt(), p.getUpdatedAt()
+                favorito, p.getCreatedAt(), p.getUpdatedAt(),
+                "SOLICITUD".equals(p.getTipo()) ? (p.getEstadoAyuda() == null
+                    ? ("Cerrada".equals(p.getStatus()) ? com.goeFast.GeoFastPe.entity.EstadoAyuda.CANCELADA
+                        : com.goeFast.GeoFastPe.entity.EstadoAyuda.ABIERTA) : p.getEstadoAyuda()) : null,
+                p.getVoluntario() == null ? null : p.getVoluntario().getId(), p.getEntregaReportadaEn()
         );
     }
 }

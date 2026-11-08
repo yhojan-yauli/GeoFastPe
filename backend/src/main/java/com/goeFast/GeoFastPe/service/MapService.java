@@ -38,7 +38,9 @@ public class MapService {
 
     /** Devuelve los puntos del mapa dentro del radio. tipo es opcional (SERVICIO, EMERGENCIA, VENTA o SOLIDARIDAD). */
     public List<MapPointResponse> puntos(double lat, double lng, Double radio, String tipo) {
-        double limite = radio == null ? 1000 : Math.min(Math.max(radio, 100), 50000);
+        Validaciones.requerirCoordenadas(lat, lng);
+        Validaciones.requerirRadio(radio);
+        double limite = radio == null ? 1000 : radio;
         String filtro = (tipo == null || tipo.isBlank()) ? null : tipo.toUpperCase(Locale.ROOT);
         Validaciones.opcionOpcional("tipo", filtro, TIPOS);
 

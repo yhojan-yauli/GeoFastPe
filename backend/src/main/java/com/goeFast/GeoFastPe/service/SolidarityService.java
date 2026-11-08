@@ -79,16 +79,24 @@ public class SolidarityService {
     @Transactional
     public SolidarityResponse actualizar(Long id, Long userId, SolidarityRequest request) {
         validar(request);
-        SolidarityPost publicacion = buscar(id);
+        SolidarityPost publicacion = postRepository.findForUpdate(id).orElseThrow(() ->
+                new ApiException(HttpStatus.NOT_FOUND, "SOLIDARITY_NOT_FOUND", "Publicacion no encontrada."));
         Validaciones.requerirPropietario(publicacion.getOwner().getId().equals(userId));
+        if ("SOLICITUD".equals(publicacion.getTipo()) &&
+                (CoordinacionAyudaService.estado(publicacion) != com.goeFast.GeoFastPe.entity.EstadoAyuda.ABIERTA
+                || !"SOLICITUD".equals(request.tipo())))
+            throw new ApiException(HttpStatus.CONFLICT, "HELP_STATE_CONFLICT", "La solicitud ya no admite edicion; usa sus acciones.");
         aplicar(publicacion, request);
         return SolidarityResponse.from(postRepository.save(publicacion), favoriteRepository.existsByUserIdAndPostId(userId, id));
     }
 
     @Transactional
     public void eliminar(Long id, Long userId) {
-        SolidarityPost publicacion = buscar(id);
+        SolidarityPost publicacion = postRepository.findForUpdate(id).orElseThrow(() ->
+                new ApiException(HttpStatus.NOT_FOUND, "SOLIDARITY_NOT_FOUND", "Publicacion no encontrada."));
         Validaciones.requerirPropietario(publicacion.getOwner().getId().equals(userId));
+        if (publicacion.getVoluntario() != null)
+            throw new ApiException(HttpStatus.CONFLICT, "HELP_STATE_CONFLICT", "Conserva el historial de la ayuda asignada; usa cancelar.");
         favoriteRepository.deleteAll(favoriteRepository.findAllByPostId(id));
         postRepository.delete(publicacion);
     }

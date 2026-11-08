@@ -45,8 +45,10 @@ public class SolidarityController {
             @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "DONACION o SOLICITUD") @RequestParam(required = false) String tipo,
             @RequestParam(required = false) String categoria,
-            @RequestParam(required = false) String q) {
-        return solidarityService.listar(idOpcional(principal), tipo, categoria, q);
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) com.goeFast.GeoFastPe.entity.EstadoAyuda estadoAyuda) {
+        return solidarityService.listar(idOpcional(principal), tipo, categoria, q).stream()
+                .filter(p -> estadoAyuda == null || estadoAyuda == p.estadoAyuda()).toList();
     }
 
     @GetMapping("/favoritos")

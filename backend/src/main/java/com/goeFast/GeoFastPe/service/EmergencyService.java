@@ -32,6 +32,8 @@ public class EmergencyService {
 
     /** Si se envian lat y lng, solo devuelve emergencias dentro del radio (metros). */
     public List<EmergencyResponse> listar(Double lat, Double lng, Double radio) {
+        Validaciones.requerirCoordenadas(lat, lng);
+        Validaciones.requerirRadio(radio);
         Double limite = radio == null ? RADIO_POR_DEFECTO_METROS : radio;
         return emergencyRepository.findAllByOrderByCreatedAtDesc().stream()
                 .filter(e -> Filtros.dentroDelRadio(lat, lng, limite, e.getLat(), e.getLng()))

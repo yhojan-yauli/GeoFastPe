@@ -21,13 +21,19 @@ public class ServiceListingService {
 
     private final ServiceListingRepository serviceRepository;
     private final UserRepository userRepository;
+    private final GeoService geoService;
+    private final com.goeFast.GeoFastPe.repository.RecomendacionServicioRepository recomendaciones;
 
-    public ServiceListingService(ServiceListingRepository serviceRepository, UserRepository userRepository) {
+    public ServiceListingService(ServiceListingRepository serviceRepository, UserRepository userRepository, GeoService geoService, com.goeFast.GeoFastPe.repository.RecomendacionServicioRepository recomendaciones) {
         this.serviceRepository = serviceRepository;
         this.userRepository = userRepository;
+        this.geoService = geoService;
+        this.recomendaciones = recomendaciones;
     }
 
     public List<ServiceResponse> listar(String q, String categoria, Double lat, Double lng, Double radio) {
+        Validaciones.requerirCoordenadas(lat, lng);
+        Validaciones.requerirRadio(radio);
         return serviceRepository.findAllByOrderByCreatedAtDesc().stream()
                 .filter(s -> Filtros.coincide(q, s.getTitle(), s.getDescription()))
                 .filter(s -> Filtros.igualOpcional(categoria, s.getCategory()))
@@ -58,7 +64,8 @@ public class ServiceListingService {
     @Transactional
     public ServiceResponse actualizar(Long id, Long userId, ServiceRequest request) {
         validar(request);
-        ServiceListing servicio = buscar(id);
+        ServiceListing servicio = serviceRepository.findForUpdate(id).orElseThrow(() ->
+                new ApiException(HttpStatus.NOT_FOUND, "SERVICE_NOT_FOUND", "Servicio no encontrado."));
         Validaciones.requerirPropietario(servicio.getOwner().getId().equals(userId));
         aplicar(servicio, request);
         return ServiceResponse.from(serviceRepository.save(servicio));
@@ -66,8 +73,10 @@ public class ServiceListingService {
 
     @Transactional
     public void eliminar(Long id, Long userId) {
-        ServiceListing servicio = buscar(id);
+        ServiceListing servicio = serviceRepository.findForUpdate(id).orElseThrow(() ->
+                new ApiException(HttpStatus.NOT_FOUND, "SERVICE_NOT_FOUND", "Servicio no encontrado."));
         Validaciones.requerirPropietario(servicio.getOwner().getId().equals(userId));
+        recomendaciones.deleteAllByServicioId(id);
         serviceRepository.delete(servicio);
     }
 
@@ -99,9 +108,19 @@ public class ServiceListingService {
         servicio.setPhone(r.phone());
         servicio.setLocationType(r.locationType());
         servicio.setAddress(Validaciones.texto(r.address()));
-        boolean gps = "gps".equals(r.locationType());
-        servicio.setLatitude(gps ? r.latitude() : null);
-        servicio.setLongitude(gps ? r.longitude() : null);
+        Double lat = r.latitude(), lng = r.longitude();
+        if (lat == null && lng == null) {
+            var lugares = geoService.buscarLugar(r.address(), null, null);
+            if (lugares.isEmpty()) throw new ApiException(HttpStatus.valueOf(422),
+                    "ADDRESS_NOT_FOUND", "No se encontro la direccion; proporciona un punto preciso.");
+            if (lugares.size() > 1) throw new ApiException(HttpStatus.valueOf(422),
+                    "ADDRESS_AMBIGUOUS", "Hay varias coincidencias; proporciona coordenadas para confirmar el lugar.");
+            lat = lugares.getFirst().lat();
+            lng = lugares.getFirst().lng();
+        }
+        Validaciones.requerirCoordenadas(lat, lng);
+        servicio.setLatitude(lat);
+        servicio.setLongitude(lng);
         servicio.setAvailability(r.availability());
         servicio.setImage(Validaciones.texto(r.image()));
     }

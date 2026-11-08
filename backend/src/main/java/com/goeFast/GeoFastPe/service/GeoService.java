@@ -42,6 +42,7 @@ public class GeoService {
     }
 
     public List<PlaceResponse> buscarLugar(String q, Double lat, Double lng) {
+        Validaciones.requerirCoordenadas(lat, lng);
         Validaciones.requerir(q != null && !q.isBlank(), "Escribe el lugar a buscar.");
 
         JsonNode datos;
@@ -80,6 +81,7 @@ public class GeoService {
     }
 
     public JsonNode clima(double lat, double lng) {
+        Validaciones.requerirCoordenadas(lat, lng);
         JsonNode datos;
         try {
             datos = openMeteo.get()
@@ -101,6 +103,8 @@ public class GeoService {
     }
 
     public RouteResponse ruta(String modo, double origenLat, double origenLng, double destinoLat, double destinoLng) {
+        Validaciones.requerirCoordenadas(origenLat, origenLng);
+        Validaciones.requerirCoordenadas(destinoLat, destinoLng);
         Validaciones.requerirOpcion("modo", modo, List.copyOf(PERFIL_RUTA.keySet()));
         String coordenadas = String.format(Locale.US, "%f,%f;%f,%f", origenLng, origenLat, destinoLng, destinoLat);
         String perfil = PERFIL_RUTA.get(modo);

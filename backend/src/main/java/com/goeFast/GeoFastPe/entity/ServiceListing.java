@@ -69,6 +69,11 @@ public class ServiceListing {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(nullable=false, columnDefinition="double precision default 0")
+    private double rating;
+    @Column(nullable=false, columnDefinition="bigint default 0")
+    private long recommendationCount;
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
