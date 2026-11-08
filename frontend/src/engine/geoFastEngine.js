@@ -7,6 +7,7 @@ import { API_BASE } from '../api/client.js';
 import { iconMarkup } from '../components/common/mapIcons.js';
 
 export function initializeGeoFastPe() {
+        if (window.GeoFastPe?.__initialized) return window.GeoFastPe;
 
         // ============================================================
         // 1. CONFIG
@@ -51,6 +52,7 @@ export function initializeGeoFastPe() {
         let currentLayerName = 'light';
         let terrainEnabled = false;
         let currentWeatherData = null;
+        let lastRouteDestination = null;
 
         // ============================================================
         // 2. MAPA
@@ -644,6 +646,12 @@ function makePointMarker(point) {
         // TODO: Diferenciar donaciones y solicitudes de ayuda.
         // TODO: Mostrar estado de la publicación.
         // TODO: Abrir detalle de la publicación.
+    } else if (kind === 'EVENTO') {
+        icono = 'calendar';
+        nombreTipo = 'Evento';
+    } else if (kind === 'REPORTE') {
+        icono = 'flag';
+        nombreTipo = 'Reporte';
     }
 
     // ==========================================
@@ -681,87 +689,97 @@ function makePointMarker(point) {
 
 
         // Evita insertar texto recibido del backend directamente como HTML.
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+        }
+
         function makePointPopup(point) {
-            const content = document.createElement('div');
-            content.style.fontFamily = 'inherit';
-            const title = document.createElement('b');
-            title.textContent = point.title || 'Punto comunitario';
-            const subtitle = document.createElement('div');
-            subtitle.style.cssText = 'color:#64748b;font-size:12px;margin-top:3px';
-            subtitle.textContent = point.type || '';
-            content.append(title, subtitle);
-            // TODO (detalle): incorporar enlace a la ficha de servicio o
-            // emergencia cuando exista un callback de navegacion desde React.
-            // TODO (emergencias): mostrar estado (activa/resuelta) y fecha
-            // si la API devuelve esos campos.
-            return new maplibregl.Popup({ offset: 18 }).setDOMContent(content);
+            const kindNames = { SERVICIO: 'Servicio', EMERGENCIA: 'Emergencia', VENTA: 'Venta', SOLIDARIDAD: 'Solidaridad', EVENTO: 'Evento', REPORTE: 'Reporte' };
+            const type = kindNames[String(point.kind || '').toUpperCase()] || 'Publicación';
+            const rows = [];
+            if (point.category) rows.push(`<div><b>Categoría:</b> ${escapeHtml(point.category)}</div>`);
+            if (point.type) rows.push(`<div><b>Tipo:</b> ${escapeHtml(point.type)}</div>`);
+            if (point.description) rows.push(`<div><b>Descripción:</b> ${escapeHtml(point.description)}</div>`);
+            if (point.location) rows.push(`<div><b>Ubicación:</b> ${escapeHtml(point.location)}</div>`);
+            if (point.status) rows.push(`<div><b>Estado:</b> ${escapeHtml(point.status)}</div>`);
+            if (point.priority) rows.push(`<div><b>Prioridad:</b> ${escapeHtml(point.priority)}</div>`);
+            if (point.ownerName) rows.push(`<div><b>Publicado por:</b> ${escapeHtml(point.ownerName)}</div>`);
+            if (point.date) rows.push(`<div><b>Fecha:</b> ${escapeHtml(point.date)}${point.time ? ` · ${escapeHtml(point.time)}` : ''}</div>`);
+            rows.push(`<div><b>Distancia:</b> ${(Number(point.distance || 0) / 1000).toFixed(2)} km</div>`);
+            const content = `<div style="font-family:inherit;max-width:280px;line-height:1.45"><strong style="font-size:15px">${escapeHtml(point.title || 'Punto comunitario')}</strong><div style="color:#7c3aed;font-size:11px;font-weight:700;margin:3px 0 8px">${type}</div>${rows.map(r => `<div style="font-size:12px;margin:3px 0">${r}</div>`).join('')}</div>`;
+            return new maplibregl.Popup({ offset: 18, maxWidth: '320px' }).setHTML(content);
+        }
+
+        function mapCacheKey() {
+            return `geofastpe_map_${currentCenter.lat.toFixed(3)}_${currentCenter.lng.toFixed(3)}_${currentRadius}_${selectedServiceCategory}`;
+        }
+
+        function readMapCache() {
+            try { const raw = localStorage.getItem(mapCacheKey()); return raw ? JSON.parse(raw).points || [] : []; } catch { return []; }
+        }
+
+        function writeMapCache(points) {
+            try { localStorage.setItem(mapCacheKey(), JSON.stringify({ savedAt: Date.now(), points })); } catch {}
+        }
+
+        function mergePendingOfflinePoints(points) {
+            try {
+                const queue = JSON.parse(localStorage.getItem('geofastpe_offline_queue') || '[]');
+                for (const item of queue) {
+                    const b = item.body || {};
+                    let kind = null;
+                    if (String(item.endpoint || '').startsWith('/servicios')) kind = 'SERVICIO';
+                    if (String(item.endpoint || '').startsWith('/eventos')) kind = 'EVENTO';
+                    if (String(item.endpoint || '').startsWith('/reportes')) kind = 'REPORTE';
+                    if (!kind || !Number.isFinite(Number(b.lat ?? b.latitude)) || !Number.isFinite(Number(b.lng ?? b.longitude))) continue;
+                    const lat = Number(b.lat ?? b.latitude), lng = Number(b.lng ?? b.longitude);
+                    if (calcDist(currentCenter.lat,currentCenter.lng,lat,lng) > currentRadius) continue;
+                    points.push({ kind, id:`offline-${item.queuedAt}`, title:b.title || b.name || 'Publicación pendiente', category:b.category, type:b.type, description:b.description, lat, lng, distance:calcDist(currentCenter.lat,currentCenter.lng,lat,lng), location:b.location || b.address, status:'Pendiente de sincronización', priority:b.priority, ownerName:'Este dispositivo', image:b.image, date:b.date, time:b.time });
+                }
+            } catch {}
+            return points;
+        }
+
+        function renderMapPoints(points) {
+            servicesData = points.map(p => ({ ...p, name: p.title }));
+            markers.forEach(m => m.remove());
+            markers = [];
+            servicesData.forEach(point => {
+                const lat = Number(point.lat), lng = Number(point.lng);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+                const el = makePointMarker(point);
+                markers.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).setPopup(makePointPopup(point)).addTo(map));
+            });
+            window.dispatchEvent(new CustomEvent('geofastpe:services', { detail: { count: servicesData.length, radius: currentRadius, category: selectedServiceCategory, services: servicesData } }));
         }
 
         async function updateServices() {
             const tipo = tipoDePuntos();
             const seq = ++puntosSeq;
             let puntos = [];
-
             if (tipo !== 'NINGUNO') {
                 try {
-                    const params = new URLSearchParams({
-                        lat: currentCenter.lat,
-                        lng: currentCenter.lng,
-                        radio: currentRadius
-                    });
+                    const params = new URLSearchParams({ lat: currentCenter.lat, lng: currentCenter.lng, radio: currentRadius });
                     if (tipo) params.set('tipo', tipo);
-                    const res = await fetch(`${API_BASE}/mapa/puntos?${params}`);
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    puntos = await res.json();
-                    if (!Array.isArray(puntos)) throw new Error('Respuesta de puntos invalida');
+                    const url = `${API_BASE}/mapa/puntos?${params}`;
+                    if (!navigator.onLine) {
+                        puntos = readMapCache();
+                    } else {
+                        const res = await fetch(url);
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        puntos = await res.json();
+                        if (!Array.isArray(puntos)) throw new Error('Respuesta de puntos invalida');
+                        writeMapCache(puntos);
+                    }
                 } catch (e) {
-                    console.warn('No se pudieron cargar los puntos del mapa:', e);
-                    toast('No se pudieron cargar los puntos del mapa');
+                    puntos = readMapCache();
+                    if (!puntos.length) console.warn('No se pudieron cargar los puntos del mapa:', e);
                 }
             }
-            // Evita que una peticion anterior sobreescriba la mas reciente.
             if (seq !== puntosSeq) return;
-
-            servicesData = puntos.map(p => ({ ...p, name: p.title }));
-            markers.forEach(m => m.remove());
-            markers = [];
-
-            servicesData.forEach(point => {
-                const lat = Number(point.lat);
-                const lng = Number(point.lng);
-                if (!Number.isFinite(lat) || !Number.isFinite(lng) ||
-                    lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
-
-                const el = makePointMarker(point);
-                markers.push(new maplibregl.Marker({ element: el, anchor: 'center' })
-                    .setLngLat([lng, lat])
-                    .setPopup(makePointPopup(point))
-                    .addTo(map));
-            });
-
-            // TODO (sincronizacion): despues de publicar un servicio o
-            // emergencia, solicitar updateServices() desde el flujo React
-            // para reflejar el nuevo punto sin recargar toda la pagina.
-            // TODO (rendimiento): aplicar agrupacion de marcadores (clusters)
-            // si la cantidad de puntos crece considerablemente.
-            toast(`${servicesData.length} puntos en radio`);
-            window.dispatchEvent(new CustomEvent('geofastpe:services', { detail: {
-                count: servicesData.length,
-                radius: currentRadius,
-                category: selectedServiceCategory,
-                services: servicesData.map(s => ({
-                    ...s,
-                    distance: s.distance ?? calcDist(currentCenter.lat, currentCenter.lng, s.lat, s.lng)
-                }))
-            }}));
-        }
-
-        function calcDist(lat1, lon1, lat2, lon2) {
-            const R = 6371e3;
-            const p1 = lat1 * Math.PI/180, p2 = lat2 * Math.PI/180;
-            const dp = (lat2-lat1) * Math.PI/180, dl = (lon2-lon1) * Math.PI/180;
-            const a = Math.sin(dp/2)**2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2)**2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            puntos = mergePendingOfflinePoints(puntos);
+            renderMapPoints(puntos);
+            toast(`${servicesData.length} puntos en radio${navigator.onLine ? '' : ' · sin conexión'}`);
         }
 
         // ============================================================
@@ -894,6 +912,19 @@ function makePointMarker(point) {
             }
         });
 
+        async function recalculateLastRoute() {
+            if (!lastRouteDestination || !navigator.onLine) return;
+            const params = new URLSearchParams({ modo: currentRouteMode, origenLat: currentCenter.lat, origenLng: currentCenter.lng, destinoLat: lastRouteDestination.lat, destinoLng: lastRouteDestination.lng });
+            try {
+                const res = await fetch(`${API_BASE}/geo/ruta?${params}`);
+                if (!res.ok) throw new Error('route');
+                const data = await res.json();
+                routeGeoJSON = data.geometry;
+                redrawRoute();
+                if (map.getLayer('route-line')) map.setPaintProperty('route-line', 'line-color', getRouteColor());
+                toast(`Ruta recalculada · ${(Number(data.distanceMeters)/1000).toFixed(1)} km · ${Math.round(Number(data.durationSeconds)/60)} min`);
+            } catch { toast('No se pudo recalcular la ruta'); }
+        }
         document.querySelectorAll('.route-mode').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.route-mode').forEach(b => b.classList.remove('active'));
@@ -901,6 +932,7 @@ function makePointMarker(point) {
                 currentRouteMode = btn.dataset.mode;
                 const labels = { driving: 'Auto', walking: 'A pie', cycling: 'Bici' };
                 toast(`Modo: ${labels[currentRouteMode]}`);
+                recalculateLastRoute();
             });
         });
 
@@ -933,18 +965,21 @@ function makePointMarker(point) {
             if (!routingMode) return;
             const destLng = e.lngLat.lng;
             const destLat = e.lngLat.lat;
+            lastRouteDestination = { lat: destLat, lng: destLng };
             toast('Calculando ruta...');
             try {
-                const params = new URLSearchParams({
-                    modo: currentRouteMode,
-                    origenLat: currentCenter.lat,
-                    origenLng: currentCenter.lng,
-                    destinoLat: destLat,
-                    destinoLng: destLng
-                });
-                const res = await fetch(`${API_BASE}/geo/ruta?${params}`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
+                const routeKey = `geofastpe_route_${currentRouteMode}_${currentCenter.lat.toFixed(4)}_${currentCenter.lng.toFixed(4)}_${destLat.toFixed(4)}_${destLng.toFixed(4)}`;
+                let data = null;
+                if (!navigator.onLine) {
+                    try { data = JSON.parse(localStorage.getItem(routeKey) || 'null'); } catch {}
+                    if (!data) throw new Error('offline-route');
+                } else {
+                    const params = new URLSearchParams({ modo: currentRouteMode, origenLat: currentCenter.lat, origenLng: currentCenter.lng, destinoLat: destLat, destinoLng: destLng });
+                    const res = await fetch(`${API_BASE}/geo/ruta?${params}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    data = await res.json();
+                    try { localStorage.setItem(routeKey, JSON.stringify(data)); } catch {}
+                }
                 if (data.geometry) {
                     routeGeoJSON = data.geometry;
                     const dist = (data.distanceMeters / 1000).toFixed(1);
@@ -973,71 +1008,77 @@ function makePointMarker(point) {
             const query = document.getElementById('search-input').value.trim();
             if (!query) return;
             const resultsDiv = document.getElementById('search-results');
-            resultsDiv.innerHTML = '<div class="result-item">Buscando...</div>';
+            resultsDiv.innerHTML = '<div class="result-item">Buscando publicaciones cercanas...</div>';
             resultsDiv.classList.add('show');
+            const q = normalizeLabel(query);
+            const searchText = q.replace(/\b(eventos?|servicios?|reportes?|problemas?|ventas?|compras?|emergencias?|ayuda|solidaridad|cerca|cercanos?|cercanas?)\b/g, ' ').replace(/\s+/g, ' ').trim();
+            const smartCategory = q.includes('evento') ? 'EVENTO' : q.includes('servicio') ? 'SERVICIO' : (q.includes('reporte') || q.includes('problema')) ? 'REPORTE' : (q.includes('venta') || q.includes('compr')) ? 'VENTA' : q.includes('emerg') ? 'EMERGENCIA' : q.includes('ayuda') || q.includes('solidar') ? 'SOLIDARIDAD' : null;
+            const toSearchItem = (p) => ({ display_name: p.title || 'Publicación', lat: String(p.lat), lon: String(p.lng), _dist: p.distance, _point: p });
+            let data = servicesData.filter(p => { const text = `${p.title || ''} ${p.category || ''} ${p.type || ''} ${p.description || ''} ${p.location || ''}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); return (smartCategory ? String(p.kind || p.type || '').toUpperCase().includes(smartCategory) : true) && (!searchText || text.includes(searchText)); }).map(toSearchItem);
 
-            try {
-                const params = new URLSearchParams({
-                    q: query,
-                    lat: currentCenter.lat,
-                    lng: currentCenter.lng
+            if (!data.length && navigator.onLine) {
+                try {
+                    const params = new URLSearchParams({ lat: currentCenter.lat, lng: currentCenter.lng, radio: currentRadius });
+                    const res = await fetch(`${API_BASE}/mapa/puntos?${params}`);
+                    if (res.ok) {
+                        const puntos = await res.json();
+                        writeMapCache(puntos);
+                        const localMatches = puntos.filter(p => `${p.title || ''} ${p.category || ''} ${p.type || ''} ${p.description || ''} ${p.location || ''}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q));
+                        data = localMatches.map(toSearchItem);
+                    }
+                } catch {}
+            }
+
+            if (!data.length && navigator.onLine) {
+                try {
+                    const params = new URLSearchParams({ q: query, lat: currentCenter.lat, lng: currentCenter.lng });
+                    const res = await fetch(`${API_BASE}/geo/buscar?${params}`);
+                    if (res.ok) {
+                        const lugares = await res.json();
+                        data = lugares.map(place => ({ display_name: place.displayName, lat: String(place.lat), lon: String(place.lng), _dist: place.distance, _fuera: place.distance != null && place.distance > currentRadius }));
+                    }
+                } catch {}
+            }
+
+            if (!data.length) {
+                const cached = readMapCache().filter(p => `${p.title || ''} ${p.category || ''} ${p.type || ''} ${p.description || ''} ${p.location || ''}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q));
+                data = cached.map(toSearchItem);
+            }
+
+            if (!data.length) {
+                resultsDiv.innerHTML = `<div class="result-item">No se encontró “${escapeHtml(query)}” en las publicaciones ni en las zonas cercanas.</div>`;
+                return;
+            }
+
+            resultsDiv.innerHTML = '';
+            data.slice(0, 12).forEach(place => {
+                const item = document.createElement('div');
+                item.className = 'result-item';
+                const name = place.display_name.split(',')[0];
+                const distText = place._dist != null ? ` · ${(Number(place._dist) / 1000).toFixed(1)} km` : '';
+                item.innerHTML = `<strong>${escapeHtml(name)}${distText}</strong><small>${escapeHtml(place.display_name)}</small>`;
+                item.addEventListener('click', () => {
+                    const lat = parseFloat(place.lat), lon = parseFloat(place.lon);
+                    if (searchMarker) searchMarker.remove();
+                    const el = document.createElement('div'); el.innerHTML = pinSVG('#ef4444'); el.style.display = 'block';
+                    const popup = place._point ? makePointPopup(place._point) : new maplibregl.Popup({ offset: 12 }).setHTML(`<div style="font-family:inherit"><b>${escapeHtml(name)}</b><br><small style="color:#64748b">${escapeHtml(place.display_name)}</small></div>`);
+                    searchMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([lon, lat]).setPopup(popup).addTo(map);
+                    searchMarker.togglePopup();
+                    map.flyTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 16), essential: true });
+                    resultsDiv.classList.remove('show');
+                    document.getElementById('search-input').value = '';
+                    toast('Resultado: ' + name);
                 });
-                const res = await fetch(`${API_BASE}/geo/buscar?${params}`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const lugares = await res.json();
-                const data = lugares.map(p => ({
-                    display_name: p.displayName,
-                    lat: String(p.lat),
-                    lon: String(p.lng),
-                    _dist: p.distance ?? undefined,
-                    _fuera: p.distance != null && p.distance > currentRadius
-                }));
-
-                if (data.length === 0) {
-                    resultsDiv.innerHTML = '<div class="result-item">Sin resultados. Intenta con otro término.</div>';
-                    return;
-                }
-
-                resultsDiv.innerHTML = '';
-                const esFallback = data.some(place => place._fuera);
-                if (esFallback) {
-                    const notice = document.createElement('div');
-                    notice.className = 'result-nearby';
-                    notice.innerText = 'Resultados cercanos (fuera del radio exacto):';
-                    resultsDiv.appendChild(notice);
-                }
-
-                data.forEach(place => {
-                    const item = document.createElement('div');
-                    item.className = 'result-item';
-                    const name = place.display_name.split(',')[0];
-                    const distText = place._dist ? ` · ${(place._dist / 1000).toFixed(1)} km` : '';
-                    item.innerHTML = `<strong>${name}${distText}</strong><small>${place.display_name}</small>`;
-                    item.addEventListener('click', () => {
-                        const lat = parseFloat(place.lat);
-                        const lon = parseFloat(place.lon);
-                        if (searchMarker) searchMarker.remove();
-                        const el = document.createElement('div');
-                        el.innerHTML = pinSVG('#ef4444');
-                        el.style.display = 'block';
-                        searchMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-                            .setLngLat([lon, lat])
-                            .setPopup(new maplibregl.Popup({ offset: 12 }).setHTML(`<div style="font-family:inherit;"><b>${name}</b><br><small style="color:#64748b">${place.display_name}</small></div>`))
-                            .addTo(map);
-                        searchMarker.togglePopup();
-                        const bounds = new maplibregl.LngLatBounds();
-                        bounds.extend([currentCenter.lng, currentCenter.lat]);
-                        bounds.extend([lon, lat]);
-                        map.fitBounds(bounds, { padding: 120, maxZoom: 17 });
-                        resultsDiv.classList.remove('show');
-                        document.getElementById('search-input').value = '';
-                        toast('Resultado: ' + name);
-                    });
-                    resultsDiv.appendChild(item);
-                });
-            } catch (e) { resultsDiv.innerHTML = '<div class="result-item">Error de búsqueda</div>'; }
+                resultsDiv.appendChild(item);
+            });
         }
         document.getElementById('search-btn')?.addEventListener('click', buscarLugar);
+        document.getElementById('search-voice-btn')?.addEventListener('click', () => {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) { toast('Tu navegador no admite búsqueda por voz'); return; }
+            const r = new SR(); r.lang = document.documentElement.lang === 'en' ? 'en-US' : document.documentElement.lang === 'pt' ? 'pt-BR' : 'es-PE'; r.interimResults = false;
+            r.onresult = e => { const input = document.getElementById('search-input'); if (input) { input.value = e.results[0][0].transcript; buscarLugar(); } }; r.onerror = () => toast('No se pudo usar el micrófono'); r.start();
+        });
         document.getElementById('search-input')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') buscarLugar(); });
         document.addEventListener('click', (e) => { if (!document.getElementById('search-container').contains(e.target)) document.getElementById('search-results').classList.remove('show'); });
 
@@ -1050,11 +1091,9 @@ function makePointMarker(point) {
         let cloudsArray = [];
 
         async function autoLoadWeather() {
+            const weatherKey = `geofastpe_weather_${currentCenter.lat.toFixed(2)}_${currentCenter.lng.toFixed(2)}`;
             if (!navigator.onLine) {
-                document.getElementById('weather-card').classList.remove('show');
-                stopClouds();
-                clearWindArrows();
-                if (cloudIndicatorMarker) { cloudIndicatorMarker.remove(); cloudIndicatorMarker = null; }
+                try { const cached = JSON.parse(localStorage.getItem(weatherKey) || 'null'); if (cached?.data) { currentWeatherData = cached.data; renderWeatherCard(cached.data); startClouds(cached.data.cloud_cover, cached.data.wind_direction_10m, cached.data.wind_speed_10m); renderWindArrows(cached.data.wind_direction_10m, cached.data.wind_speed_10m); } } catch {}
                 return;
             }
             try {
@@ -1062,6 +1101,7 @@ function makePointMarker(point) {
                 const res = await fetch(`${API_BASE}/geo/clima?${params}`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const cur = await res.json();
+                try { localStorage.setItem(weatherKey, JSON.stringify({ savedAt: Date.now(), data: cur })); } catch {}
                 currentWeatherData = cur;
                 renderWeatherCard(cur);
                 renderCloudIndicator(cur.cloud_cover);
@@ -1186,7 +1226,7 @@ function makePointMarker(point) {
             if (navigator.onLine) { badge.classList.remove('offline'); badge.innerText = 'En línea'; }
             else { badge.classList.add('offline'); badge.innerText = 'Sin conexión'; document.getElementById('weather-card').classList.remove('show'); stopClouds(); clearWindArrows(); if (cloudIndicatorMarker) { cloudIndicatorMarker.remove(); cloudIndicatorMarker = null; } }
         }
-        window.addEventListener('online', () => { updateConnectivityBadge(); toast('Conexión restaurada'); autoLoadWeather(); });
+        window.addEventListener('online', () => { updateConnectivityBadge(); toast('Conexión restaurada · sincronizando'); updateServices(); autoLoadWeather(); });
         window.addEventListener('offline', () => { updateConnectivityBadge(); toast('Sin conexión'); });
 
         document.getElementById('btn-emergency')?.addEventListener('click', () => {
@@ -1197,6 +1237,7 @@ function makePointMarker(point) {
         });
 
         window.GeoFastPe = {
+            __initialized: true,
             setCategory(category) { selectedServiceCategory = category; updateServices(); },
             setRadius(value) { currentRadius = value; addRadiusCircle(); updateServices(); },
             getMap() { return map; },

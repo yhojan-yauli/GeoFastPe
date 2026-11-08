@@ -3,7 +3,7 @@ import { Check, Circle, Eye, EyeOff, KeyRound, Lock, Mail, UserPlus, UserRound, 
 import { useAuth } from './AuthContext.jsx';
 import './AuthModal.css';
 
-const initialForm = { name: '', email: '', password: '', confirmPassword: '' };
+const initialForm = { name: '', username: '', email: '', password: '', confirmPassword: '' };
 
 export default function AuthModal({ mode = 'login', onClose, onAuthenticated }) {
   const { login, register } = useAuth();
@@ -66,7 +66,7 @@ export default function AuthModal({ mode = 'login', onClose, onAuthenticated }) 
     setMessage('');
     try {
       if (isRegister) {
-        await register({ name: form.name.trim(), email: form.email.trim(), password: form.password });
+        await register({ name: form.name.trim(), username: form.username.trim(), email: form.email.trim(), password: form.password });
       } else {
         await login(form.email.trim(), form.password);
       }
@@ -96,9 +96,15 @@ export default function AuthModal({ mode = 'login', onClose, onAuthenticated }) 
               <input name="name" type="text" placeholder="Nombre completo" aria-label="Nombre completo" autoComplete="name" value={form.name} onChange={handleChange} required minLength={2} maxLength={120} />
             </label>
           )}
+          {isRegister && (
+            <label className="gf-auth-field">
+              <span className="gf-auth-field-icon" aria-hidden="true"><UserRound size={18} /></span>
+              <input name="username" type="text" placeholder="Nombre de usuario" aria-label="Nombre de usuario" autoComplete="username" value={form.username} onChange={handleChange} required minLength={3} maxLength={40} pattern="[A-Za-z0-9_.-]+" />
+            </label>
+          )}
           <label className="gf-auth-field">
             <span className="gf-auth-field-icon" aria-hidden="true"><Mail size={18} /></span>
-            <input name="email" type="email" placeholder="Correo electrónico" aria-label="Correo electrónico" autoComplete="email" value={form.email} onChange={handleChange} required />
+            <input name="email" type="text" placeholder={isRegister ? "Correo electrónico" : "Correo, teléfono o usuario"} aria-label="Correo electrónico" autoComplete="email" value={form.email} onChange={handleChange} required />
           </label>
           <label className="gf-auth-field">
             <span className="gf-auth-field-icon" aria-hidden="true"><Lock size={18} /></span>
