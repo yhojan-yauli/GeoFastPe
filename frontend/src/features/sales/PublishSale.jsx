@@ -105,8 +105,9 @@ export default function PublishSale({ onBack, onSubmitSale, onPickLocation }) {
       return;
     }
 
-    if (!form.location) {
-      setError('Selecciona un distrito.');
+    const location = form.location.trim();
+    if (!location) {
+      setError('Ingresa el distrito donde se encuentra el producto.');
       return;
     }
 
@@ -123,7 +124,7 @@ export default function PublishSale({ onBack, onSubmitSale, onPickLocation }) {
         condition: form.condition,
         price,
         description,
-        location: form.location,
+        location,
         lat: point.lat,
         lng: point.lng,
         image
@@ -191,8 +192,20 @@ export default function PublishSale({ onBack, onSubmitSale, onPickLocation }) {
           <div className="publish-sale-field">
             <label htmlFor="sale-location">
               <MapPin size={16} />
-              Ubicación del producto *
+              Distrito del producto *
             </label>
+            <input
+              id="sale-location"
+              name="location"
+              type="text"
+              value={form.location}
+              onChange={updateField}
+              placeholder="Ej. Cayma, Arequipa, Arequipa"
+              maxLength={160}
+              autoComplete="address-level3"
+              required
+            />
+            <small>Escribe el distrito, provincia y departamento para identificar dónde se ofrece el producto.</small>
           </div>
 
           <div className="publish-sale-field">

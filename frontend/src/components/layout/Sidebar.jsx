@@ -1,7 +1,6 @@
 
 import { useState } from 'react';
 import { useAuth } from '../../features/auth/AuthContext.jsx';
-import { usePreferences } from '../../preferences/PreferencesContext.jsx';
 import { canAccessSection } from '../../features/auth/permissions.js';
 import './Sidebar.css';
 
@@ -63,7 +62,6 @@ export default function Sidebar({
   onRequireLogin
 }) {
   const { isAuthenticated } = useAuth();
-  const { t } = usePreferences();
   const [collapsed, setCollapsed] = useState(false);
 
   // ==========================================
@@ -110,8 +108,8 @@ export default function Sidebar({
   // ==========================================
 
   return (
-    <aside className={`left-sidebar gf-sidebar ${collapsed ? 'collapsed' : ''}`}>
-      <button type="button" className="gf-sidebar-toggle" onClick={() => setCollapsed(v => !v)} aria-label={collapsed ? 'Mostrar menú' : 'Ocultar menú'} title={collapsed ? 'Mostrar menú' : 'Ocultar menú'}>{collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}</button>
+    <aside className={`left-sidebar gf-sidebar ${collapsed ? 'gf-sidebar-collapsed' : ''}`}>
+      <button className="gf-sidebar-toggle" type="button" onClick={() => setCollapsed(value => !value)} aria-label={collapsed ? "Expandir menú" : "Contraer menú"} title={collapsed ? "Expandir menú" : "Contraer menú"}><span>{collapsed ? <ChevronRight size={17}/> : <ChevronLeft size={17}/>}</span></button>
 
       {/* =====================================
           ENCABEZADO GEOFASTPE
@@ -136,7 +134,7 @@ export default function Sidebar({
       <div className="gf-sidebar-content">
 
         <div className="gf-nav-caption">
-          {t('nav.menu')}
+          MENÚ PRINCIPAL
         </div>
 
         <nav
@@ -160,7 +158,7 @@ export default function Sidebar({
                     item.category
                   )
                 }
-                title={t(`nav.${item.label}`)}
+                title={item.label}
                 aria-current={
                   isSelected ? 'page' : undefined
                 }
@@ -176,7 +174,7 @@ export default function Sidebar({
 
                 {/* NOMBRE DEL MÓDULO */}
                 <span className="gf-nav-label">
-                  {t(`nav.${item.label}`)}
+                  {item.label}
                 </span>
 
                 {/* INDICADOR ACTIVO */}
