@@ -51,7 +51,6 @@ import { initializeGeoFastPe } from './engine/geoFastEngine.js';
 import MessagesPage from './features/messages/MessagesPage.jsx';
 import ProfilePage from './features/profile/ProfilePage.jsx';
 import ConfigPage from './features/settings/ConfigPage.jsx';
-import GeoFastAssistant from './components/GeoFastAssistant.jsx';
 
 import {
   eventsApi,
@@ -205,6 +204,38 @@ const showOnMap = (category, point = null) => {
     }
   };
 
+  const syncPublicationsToMap = async () => {
+    const cacheKey = 'geofastpe:map-publications:v1';
+    try {
+      const [events, reports] = await Promise.all([
+        eventsApi.listar({ tab: 'proximos' }),
+        reportsApi.listar()
+      ]);
+      const eventPoints = (Array.isArray(events) ? events : []).map(item => ({
+        ...item, kind: 'EVENTO', title: item.title, lat: item.lat, lng: item.lng,
+        description: item.description, ownerName: item.ownerName, location: item.location
+      }));
+      const reportPoints = (Array.isArray(reports) ? reports : []).map(item => ({
+        ...item, kind: 'REPORTE', title: item.title, lat: item.lat, lng: item.lng,
+        description: item.description, ownerName: item.ownerName, location: item.location
+      }));
+      const points = [...eventPoints, ...reportPoints];
+      try { localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), points })); } catch {}
+      window.GeoFastPe?.setExternalPoints(points);
+      return points;
+    } catch (error) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+        if (Array.isArray(cached?.points)) {
+          window.GeoFastPe?.setExternalPoints(cached.points);
+          return cached.points;
+        }
+      } catch {}
+      console.warn('No se pudieron sincronizar eventos y reportes al mapa:', error);
+      return [];
+    }
+  };
+
   const loadServicesCatalog = async () => {
     try { setServicesCatalog(await servicesApi.listar()); } catch (error) { showError(error); }
   };
@@ -214,6 +245,12 @@ const showOnMap = (category, point = null) => {
   // ==========================================
   useEffect(() => {
     initializeGeoFastPe();
+    const syncTimer = setInterval(() => {
+      if (window.GeoFastPe?.setExternalPoints) {
+        clearInterval(syncTimer);
+        syncPublicationsToMap();
+      }
+    }, 250);
 
     const receive = (event) => {
       setServices(event.detail?.services || []);
@@ -232,6 +269,7 @@ const showOnMap = (category, point = null) => {
     return () => {
       window.removeEventListener('geofastpe:services', receive);
       clearInterval(timer);
+      clearInterval(syncTimer);
     };
   }, []);
 
@@ -405,8 +443,7 @@ const showOnMap = (category, point = null) => {
 
   const submitService = async (data) => {
     const image = await filesApi.resolverImagen(data.image);
-    const created = await servicesApi.crear({ ...data, image });
-    showOnMap('Servicios', created);
+    await servicesApi.crear({ ...data, image });
     await loadServicesCatalog();
     showOnMap('Servicios');
     setShowPublishService(false);
@@ -458,8 +495,7 @@ const showOnMap = (category, point = null) => {
 
   const submitSale = async (data) => {
     const image = await filesApi.resolverImagen(data.image);
-    const created = await salesApi.crear({ ...data, image });
-    showOnMap('Ventas', created);
+    await salesApi.crear({ ...data, image });
     await loadSales();
     showOnMap('Ventas');
     setSalesView('catalog');
@@ -600,6 +636,7 @@ const showOnMap = (category, point = null) => {
     setShowPublishService(false);
     setReportsView('catalog');
     loadReports();
+    syncPublicationsToMap();
   };
 
   const openCreateReport = () => {
@@ -619,9 +656,10 @@ const showOnMap = (category, point = null) => {
 
   const submitReport = async (data) => {
     const images = await filesApi.resolverImagenes(data.images);
-    const created = await reportsApi.crear({ ...data, images });
-    showOnMap('Reportes', created);
+    await reportsApi.crear({ ...data, images });
     await loadReports();
+    await syncPublicationsToMap();
+    window.GeoFastPe?.setCategory('Reportes');
     setReportsView('catalog');
   };
 
@@ -645,6 +683,7 @@ const showOnMap = (category, point = null) => {
     setEventsView('catalog');
     setEventsTab('proximos');
     loadEvents('proximos');
+    syncPublicationsToMap();
   };
 
   const changeEventsTab = (tab) => {
@@ -669,10 +708,11 @@ const showOnMap = (category, point = null) => {
 
   const submitEvent = async (data) => {
     const image = await filesApi.resolverImagen(data.image);
-    const created = await eventsApi.crear({ ...data, image });
-    showOnMap('Eventos', created);
+    await eventsApi.crear({ ...data, image });
     setEventsTab('proximos');
     await loadEvents('proximos');
+    await syncPublicationsToMap();
+    window.GeoFastPe?.setCategory('Eventos');
     setEventsView('catalog');
   };
 
@@ -772,7 +812,7 @@ const showOnMap = (category, point = null) => {
       )}
 
       {/* MAPA: no se desmonta al cambiar de vista */}
-      <div className={`geofastpe-map-workspace ${showMapInterface ? '' : 'workspace-hidden'}`}>
+      <div className="geofastpe-map-workspace">
         <MapView />
         <ConnectivityView />
         <SearchView />
@@ -995,8 +1035,6 @@ const showOnMap = (category, point = null) => {
       {authMode && (
         <AuthModal key={authMode} mode={authMode} onClose={closeAuth} onAuthenticated={handleAuthenticated} />
       )}
-
-      <GeoFastAssistant onSelectSection={selectSection} />
     </main>
   );
 }
