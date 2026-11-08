@@ -1,4 +1,3 @@
-
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; height: 100vh; width: 100vw; overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -92,9 +91,9 @@
         #radius-panel .radius-info { font-size: 12px; font-weight: 600; color: #1e293b; }
         #radius-panel .radius-info span { color: #ea580c; }
         #radius-panel input[type=range] { width: 100%; height: 4px; border-radius: 2px; background: #e2e8f0; outline: none; cursor: pointer; -webkit-appearance: none; appearance: none; }
-        #radius-panel input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #1e293b; cursor: pointer; border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+        #radius-panel input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #1e293b; cursor: pointer; border: 2px solid white;box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
 
-        #weather-card { position: absolute; bottom: 100px; left: 16px; z-index: 10; background: rgba(15, 23, 42, 0.95); color: #f1f5f9; border-radius: 14px; padding: 12px 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.35); border: 1px solid rgba(148, 163, 184, 0.15); backdrop-filter: blur(10px); min-width: 170px; max-width: 210px; display: none; }
+        #weather-card { position: absolute; bottom: 100px; left: 16px; z-index: 10; background: rgba(15, 23, 42, 0.95); color: #f1f5f9; border-radius: 14px; padding: 12px 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.35);border: 1px solid rgba(148, 163, 184, 0.15); backdrop-filter: blur(10px); min-width: 170px; max-width: 210px; display: none; }
         #weather-card.show { display: block; }
         #weather-card .wx-header { display: flex; align-items: center; gap: 10px; cursor: pointer; }
         #weather-card .wx-icon-wrap { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
@@ -193,3 +192,430 @@ html, body, #root { width: 100%; height: 100%; margin: 0; }
 .maplibregl-ctrl-top-right{top:65px;right:390px}
 @media(max-width:1050px){.left-sidebar{width:220px}.right-panel{width:320px}#connectivity-badge,#layer-switcher,#weather-card{left:232px}#search-container{left:calc(50% + 0px);max-width:calc(100vw - 590px)}#fab-container,#rotation-control{right:335px}#transport-legend{right:335px}.maplibregl-ctrl-top-right{right:335px}}
 @media(max-width:760px){.left-sidebar{width:66px;padding:0 7px}.brand{height:72px;padding:0;justify-content:center}.brand>span:last-child,.nav-caption,.nav-item>span:not(.nav-icon),.sidebar-bottom>div:last-child{display:none}.brand-mark{width:38px}.left-sidebar nav{margin-top:14px}.nav-item{justify-content:center;padding:0;height:44px}.nav-icon{font-size:19px}.sidebar-bottom{justify-content:center;padding:0}.right-panel{width:min(310px,calc(100vw - 76px));top:auto;height:43vh;min-height:250px;border-radius:16px 16px 0 0}.panel-heading{padding:15px 16px}.panel-heading h2{font-size:17px}.radius-filter{padding:10px 16px}.filter-note{display:none}#connectivity-badge{left:78px;top:12px}#search-container{left:78px;right:12px;top:55px;width:auto;max-width:none;transform:none}#layer-switcher{left:78px;top:112px;max-height:210px}#transport-legend{right:12px;top:112px}#fab-container{right:12px;bottom:calc(43vh + 15px)}#route-modes{right:70px;bottom:calc(43vh + 15px)}#radius-panel{left:calc(50% + 33px);bottom:calc(43vh + 12px);width:220px}#weather-card{left:78px;bottom:calc(43vh + 12px);min-width:145px}#rotation-control{right:12px;bottom:calc(43vh + 82px)}.maplibregl-ctrl-top-right{right:12px;top:110px}}
+
+.login-required-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.login-required-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 28px;
+  border-radius: 18px;
+  background: #fff;
+  color: #1e293b;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.login-required-card h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
+}
+
+.login-required-card p {
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.login-required-card button {
+  padding: 11px 20px;
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .login-required-card {
+    padding: 22px;
+  }
+}
+
+/* Botones superiores de autenticación */
+.auth-header {
+  position: fixed;
+  top: 16px;
+  right: 70px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-header button {
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.auth-header-login {
+  background: #fff;
+  color: #1e293b;
+}
+
+.auth-header-register {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb !important;
+}
+
+.auth-user-name {
+  padding: 8px 12px;
+  background: #fff;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* Ventanas de autenticación */
+.login-required-card {
+  position: relative;
+  text-align: center;
+}
+
+.auth-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  border: none !important;
+  background: transparent !important;
+  color: #64748b !important;
+  font-size: 26px;
+  cursor: pointer;
+}
+
+.auth-logo {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.auth-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.auth-actions button {
+  flex: 1;
+  padding: 12px 10px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-login-btn {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+}
+
+.auth-register-btn {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.auth-explore {
+  display: block;
+  margin: 18px auto 0;
+  background: transparent !important;
+  border: none !important;
+  color: #2563eb !important;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.auth-form input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.auth-form .auth-login-btn {
+  padding: 13px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .auth-header {
+    top: 12px;
+    right: 12px;
+    gap: 6px;
+  }
+
+  .auth-header button {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+
+  .auth-actions {
+    flex-direction: column;
+  }
+}
+
+/* =====================================
+   GEOFASTPE - AUTENTICACIÓN INTEGRADA
+   ===================================== */
+
+/* Contenedor dentro del panel derecho */
+.panel-auth-section {
+  position: relative;
+  width: 100%;
+  padding: 16px 20px;
+  margin-top: auto;
+  border-top: 1px solid #ece9f4;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+/* Eliminar posicionamiento flotante anterior */
+.panel-auth-section .auth-header {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  display: block;
+}
+
+/* Botones */
+.panel-auth-section .auth-header-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: 100%;
+}
+
+.panel-auth-section .auth-header-actions button {
+  width: 100%;
+  min-height: 42px;
+  padding: 11px 14px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Iniciar sesión */
+.panel-auth-section .auth-header-login {
+  background: #ffffff;
+  border: 1px solid #e5e0ef;
+  color: #252039;
+}
+
+.panel-auth-section .auth-header-login:hover {
+  background: #f5f0ff;
+  border-color: #a97cff;
+}
+
+/* Crear cuenta */
+.panel-auth-section .auth-header-register {
+  background: #7626ed;
+  border: 1px solid #7626ed;
+  color: #ffffff;
+}
+
+.panel-auth-section .auth-header-register:hover {
+  background: #6218d1;
+}
+
+/* Usuario autenticado */
+.panel-auth-section .auth-account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f7f3ff;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.panel-auth-section .auth-account-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: #7626ed;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.panel-auth-section .auth-account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.panel-auth-section .auth-account-info strong {
+  font-size: 13px;
+  color: #252039;
+}
+
+.panel-auth-section .auth-account-info button {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: #7626ed;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* ========================================
+   GEOFASTPE - INTEGRACIÓN DE SERVICIOS
+   Mantiene el diseño original del mapa
+======================================== */
+
+.geofastpe-app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.geofastpe-map-workspace {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.geofastpe-map-workspace.workspace-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Esencial: conservar la disposición superpuesta original */
+.app-shell {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.geofastpe-panel-workspace {
+  display: contents;
+}
+
+.geofastpe-panel-workspace.workspace-hidden .right-panel {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.geofastpe-content-workspace {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 264px;
+  z-index: 25;
+  overflow-y: auto;
+  background: #f8faff;
+  pointer-events: auto;
+}
+
+@media (max-width: 1050px) {
+  .geofastpe-content-workspace { left: 220px; }
+}
+
+@media (max-width: 760px) {
+  .geofastpe-content-workspace { left: 66px; }
+}
+/* Acceso temporal para pruebas del frontend */
+.auth-demo-button {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 16px;
+  border: 1px solid #7626ed;
+  border-radius: 10px;
+  background: #f5f0ff;
+  color: #7626ed;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-demo-button:hover {
+  background: #e9ddff;
+}
+
+/* Modo demostración - GeoFastPe */
+
+.auth-demo-section {
+  margin-top: 22px;
+  text-align: center;
+}
+
+.auth-demo-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.auth-demo-divider::before,
+.auth-demo-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: #e2e8f0;
+}
+
+.auth-demo-button {
+  width: 100%;
+  padding: 13px 16px;
+  border: 1px solid #7626ed;
+  border-radius: 10px;
+  background: #f4efff;
+  color: #7626ed;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.auth-demo-button:hover {
+  background: #e9ddff;
+}
+
+.auth-demo-section small {
+  display: block;
+  margin-top: 10px;
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.5;
+}
