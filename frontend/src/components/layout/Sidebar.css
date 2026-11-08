@@ -373,10 +373,14 @@
   }
 }
 
-.gf-sidebar-toggle{position:absolute;right:-12px;top:78px;z-index:40;width:26px;height:34px;border:1px solid rgba(255,255,255,.22);border-radius:0 10px 10px 0;background:#6d29e2;color:#fff;display:grid;place-items:center;box-shadow:0 5px 15px rgba(0,0,0,.2);cursor:pointer}
-.left-sidebar.gf-sidebar{position:absolute;transition:width .25s ease,transform .25s ease}
-.left-sidebar.gf-sidebar.collapsed{width:76px}
-.left-sidebar.gf-sidebar.collapsed .gf-nav-label,.left-sidebar.gf-sidebar.collapsed .gf-nav-caption,.left-sidebar.gf-sidebar.collapsed .gf-footer-info,.left-sidebar.gf-sidebar.collapsed .gf-brand-name{display:none}
-.left-sidebar.gf-sidebar.collapsed .gf-nav-item{justify-content:center;padding:0}
-.left-sidebar.gf-sidebar.collapsed .gf-sidebar-bottom{justify-content:center}
-@media(max-width:760px){.gf-sidebar-toggle{right:-11px;top:82px}.left-sidebar.gf-sidebar{width:76px}.left-sidebar.gf-sidebar:not(.collapsed){width:min(270px,82vw);z-index:100}.left-sidebar.gf-sidebar:not(.collapsed) .gf-nav-label,.left-sidebar.gf-sidebar:not(.collapsed) .gf-nav-caption,.left-sidebar.gf-sidebar:not(.collapsed) .gf-footer-info{display:block}.left-sidebar.gf-sidebar:not(.collapsed) .gf-nav-item{justify-content:flex-start;padding:0 13px}.left-sidebar.gf-sidebar.collapsed{width:76px}}
+
+/* Control manual para contraer y desplegar el menú lateral */
+.left-sidebar.gf-sidebar { position: absolute; transition: width .22s ease, transform .22s ease; z-index: 40; }
+.gf-sidebar-toggle { position:absolute; top:76px; right:-13px; z-index:50; width:27px; height:27px; border:1px solid rgba(255,255,255,.22); border-radius:50%; background:#7c2de5; color:#fff; display:grid; place-items:center; padding:0; cursor:pointer; box-shadow:0 3px 10px rgba(20,10,45,.25); }
+.gf-sidebar-collapsed { width:76px !important; padding-left:7px !important; padding-right:7px !important; }
+.gf-sidebar-collapsed .gf-brand-name,.gf-sidebar-collapsed .gf-nav-caption,.gf-sidebar-collapsed .gf-nav-label,.gf-sidebar-collapsed .gf-nav-active,.gf-sidebar-collapsed .gf-footer-info { display:none !important; }
+.gf-sidebar-collapsed .gf-brand { justify-content:center; }
+.gf-sidebar-collapsed .gf-navigation { margin-top:14px; }
+.gf-sidebar-collapsed .gf-nav-item { justify-content:center; padding:0; }
+.gf-sidebar-collapsed .gf-sidebar-bottom { justify-content:center; padding:0; }
+@media (max-width:760px) { .gf-sidebar-toggle { top:79px; right:-12px; width:24px; height:24px; } .left-sidebar.gf-sidebar { width:66px; } }

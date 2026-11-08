@@ -27,7 +27,6 @@ export const filesApi = {
   // Convierte un File en URL subida; si ya es texto/URL o no hay valor, lo devuelve tal cual (o null).
   resolverImagen: async (valor) => {
     if (valor instanceof File) {
-      if (!navigator.onLine) return null;
       const respuesta = await filesApi.subir(valor);
       return respuesta.url;
     }
@@ -36,8 +35,7 @@ export const filesApi = {
   resolverImagenes: async (archivos = []) => {
     const urls = [];
     for (const archivo of archivos) {
-      const url = await filesApi.resolverImagen(archivo);
-      if (url) urls.push(url);
+      urls.push(await filesApi.resolverImagen(archivo));
     }
     return urls;
   }
@@ -93,13 +91,5 @@ export const chatApi = {
   crear: (datos) => apiRequest('/conversaciones', { method: 'POST', body: datos }),
   mensajes: (id) => apiRequest(`/conversaciones/${id}/mensajes`),
   enviar: (id, text) => apiRequest(`/conversaciones/${id}/mensajes`, { method: 'POST', body: { text } }),
-  marcarLeido: (id) => apiRequest(`/conversaciones/${id}/leer`, { method: 'POST' }),
-  publicas: (filtros = {}) => apiRequest('/conversaciones/publicas', { query: filtros }),
-  crearPublico: (datos) => apiRequest('/conversaciones/publicas', { method: 'POST', body: { ...datos, publicGroup: true } }),
-  unirse: (id) => apiRequest(`/conversaciones/${id}/unirse`, { method: 'POST' })
-};
-
-export const ratingsApi = {
-  listar: (userId, serviceId) => apiRequest(`/resenas/usuario/${userId}`, { query: serviceId ? { serviceId } : {} }),
-  crear: (datos) => apiRequest('/resenas', { method: 'POST', body: datos })
+  marcarLeido: (id) => apiRequest(`/conversaciones/${id}/leer`, { method: 'POST' })
 };
