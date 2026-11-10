@@ -1,0 +1,382 @@
+
+/* ========================================
+   GEOFASTPE - SIDEBAR CON IMAGEN DE FONDO
+======================================== */
+
+.left-sidebar.gf-sidebar {
+  background-color: #17112f;
+  background-image: url('../../assets/branding/sidebar-background.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 100% 100%;
+
+  color: #f5f1ff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  isolation: isolate;
+
+  padding: 0 12px;
+  box-sizing: border-box;
+  border-right: 1px solid rgba(167, 139, 250, 0.22);
+}
+
+/* ========================================
+   ENCABEZADO
+======================================== */
+
+.gf-brand {
+  height: 108px;
+  min-height: 108px;
+  position: relative;
+  flex-shrink: 0;
+  background: transparent;
+}
+
+/* ========================================
+   CONTENIDO PRINCIPAL
+======================================== */
+
+.gf-sidebar-content {
+  position: relative;
+  z-index: 2;
+
+  flex: 0 1 auto;
+  min-height: 0;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  scrollbar-width: thin;
+  scrollbar-color: #63419a transparent;
+
+  padding-bottom: 8px;
+}
+
+/* ========================================
+   TITULO DEL MENU
+======================================== */
+
+.gf-nav-caption {
+  position: relative;
+  z-index: 2;
+
+  padding: 25px 12px 12px;
+
+  color: #c8aaff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+/* ========================================
+   NAVEGACION
+======================================== */
+
+.gf-navigation {
+  position: relative;
+  z-index: 2;
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ========================================
+   BOTONES
+======================================== */
+
+.gf-nav-item {
+  position: relative;
+  flex-shrink: 0;
+
+  width: 100%;
+  height: 47px;
+
+  border: 0;
+  border-radius: 11px;
+
+  background: transparent;
+  color: #eee8ff;
+
+  display: flex;
+  align-items: center;
+  gap: 13px;
+
+  padding: 0 13px;
+
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.gf-nav-item:hover {
+  background: rgba(150, 98, 243, 0.20);
+  color: #ffffff;
+}
+
+.gf-nav-item.selected {
+  background: linear-gradient(
+    100deg,
+    #9139f7,
+    #6d29e2
+  );
+
+  color: #ffffff;
+
+  box-shadow: 0 6px 18px rgba(116, 43, 220, 0.30);
+}
+
+.gf-nav-item:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: -2px;
+}
+
+/* ========================================
+   ICONOS Y TEXTOS
+======================================== */
+
+.gf-nav-icon {
+  width: 20px;
+  min-width: 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gf-nav-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.gf-nav-active {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+/* ========================================
+   ESPACIO DECORATIVO INFERIOR
+======================================== */
+
+.gf-scenery {
+  position: relative;
+
+  flex: 1 1 auto;
+  min-height: 20px;
+
+  pointer-events: none;
+}
+
+/* ========================================
+   PIE INFERIOR
+======================================== */
+
+.gf-sidebar-bottom {
+  position: relative;
+  z-index: 2;
+
+  min-height: 76px;
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 0 8px;
+
+  background: transparent;
+
+  box-sizing: border-box;
+}
+
+/* ========================================
+   AVATAR
+======================================== */
+
+.gf-avatar {
+  width: 35px;
+  height: 35px;
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: linear-gradient(
+    135deg,
+    #5431a4,
+    #372663
+  );
+
+  display: grid;
+  place-items: center;
+
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* ========================================
+   INFORMACION INFERIOR
+======================================== */
+
+.gf-footer-info {
+  min-width: 0;
+}
+
+.gf-footer-info strong {
+  display: block;
+  color: #ffffff;
+  font-size: 12px;
+}
+
+.gf-footer-info small {
+  display: block;
+  color: #b7a9d4;
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+/* ========================================
+   PANTALLAS MEDIANAS
+======================================== */
+
+@media (max-width: 1050px) and (min-width: 761px) {
+  .gf-nav-item {
+    font-size: 13px;
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  .gf-nav-label {
+    font-size: 12px;
+  }
+}
+
+/* ========================================
+   MOVILES - SIDEBAR COMPACTO
+======================================== */
+
+@media (max-width: 760px) {
+  .left-sidebar.gf-sidebar {
+    padding: 0 7px;
+
+    background-image: none;
+    background-color: #191532;
+  }
+
+  .gf-brand {
+    height: 72px;
+    min-height: 72px;
+  }
+
+  .gf-brand::after {
+    content: "GF";
+
+    position: absolute;
+    top: 17px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    display: grid;
+    place-items: center;
+
+    width: 38px;
+    height: 38px;
+
+    border-radius: 11px;
+
+    background: linear-gradient(
+      135deg,
+      #9333ea,
+      #6024cf
+    );
+
+    color: white;
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .gf-nav-caption,
+  .gf-nav-label,
+  .gf-nav-active,
+  .gf-footer-info {
+    display: none;
+  }
+
+  .gf-navigation {
+    margin-top: 14px;
+    gap: 6px;
+  }
+
+  .gf-nav-item {
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .gf-nav-icon {
+    width: 20px;
+    min-width: 20px;
+  }
+
+  .gf-scenery {
+    display: none;
+  }
+
+  .gf-sidebar-bottom {
+    min-height: 65px;
+    justify-content: center;
+    padding: 0;
+    margin-top: auto;
+  }
+}
+
+/* ========================================
+   PANTALLAS DE POCA ALTURA
+======================================== */
+
+@media (max-height: 760px) and (min-width: 761px) {
+  .gf-brand {
+    height: 82px;
+    min-height: 82px;
+  }
+
+  .gf-nav-caption {
+    padding-top: 12px;
+    padding-bottom: 8px;
+  }
+
+  .gf-navigation {
+    gap: 2px;
+  }
+
+  .gf-nav-item {
+    height: 40px;
+  }
+
+  .gf-scenery {
+    min-height: 0;
+  }
+
+  .gf-sidebar-bottom {
+    min-height: 60px;
+  }
+}
+
+.gf-sidebar-toggle{position:absolute;right:-12px;top:78px;z-index:40;width:26px;height:34px;border:1px solid rgba(255,255,255,.22);border-radius:0 10px 10px 0;background:#6d29e2;color:#fff;display:grid;place-items:center;box-shadow:0 5px 15px rgba(0,0,0,.2);cursor:pointer}
+.left-sidebar.gf-sidebar{position:absolute;transition:width .25s ease,transform .25s ease}
+.left-sidebar.gf-sidebar.collapsed{width:76px}
+.left-sidebar.gf-sidebar.collapsed .gf-nav-label,.left-sidebar.gf-sidebar.collapsed .gf-nav-caption,.left-sidebar.gf-sidebar.collapsed .gf-footer-info,.left-sidebar.gf-sidebar.collapsed .gf-brand-name{display:none}
+.left-sidebar.gf-sidebar.collapsed .gf-nav-item{justify-content:center;padding:0}
+.left-sidebar.gf-sidebar.collapsed .gf-sidebar-bottom{justify-content:center}
+@media(max-width:760px){.gf-sidebar-toggle{right:-11px;top:82px}.left-sidebar.gf-sidebar{width:76px}.left-sidebar.gf-sidebar:not(.collapsed){width:min(270px,82vw);z-index:100}.left-sidebar.gf-sidebar:not(.collapsed) .gf-nav-label,.left-sidebar.gf-sidebar:not(.collapsed) .gf-nav-caption,.left-sidebar.gf-sidebar:not(.collapsed) .gf-footer-info{display:block}.left-sidebar.gf-sidebar:not(.collapsed) .gf-nav-item{justify-content:flex-start;padding:0 13px}.left-sidebar.gf-sidebar.collapsed{width:76px}}
