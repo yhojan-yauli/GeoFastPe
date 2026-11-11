@@ -1,5 +1,5 @@
 # GeoFastPe
-hackaton_comercio2026 en desarrollo
+hackaton_comercio2026 en desarrollo.
 
 ## Ramas
 
