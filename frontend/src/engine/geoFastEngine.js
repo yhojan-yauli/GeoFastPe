@@ -3,10 +3,13 @@
  * Se conserva íntegro el JavaScript del HTML entregado; únicamente se encapsula
  * para inicializarlo desde el ciclo de vida de React.
  */
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { API_BASE } from '../api/client.js';
 import { iconMarkup } from '../components/common/mapIcons.js';
 
 export function initializeGeoFastPe() {
+        if (window.GeoFastPe?.__initialized) return window.GeoFastPe;
 
         // ============================================================
         // 1. CONFIG
@@ -48,10 +51,21 @@ export function initializeGeoFastPe() {
         let centerPin = null;
         let searchMarker = null;
         let routeGeoJSON = null;
-        let routeDestination = null;
         let currentLayerName = 'light';
         let terrainEnabled = false;
         let currentWeatherData = null;
+        let lastRouteDestination = null;
+        let routeDestinationMarker = null;
+
+        // Ubicación real del usuario (GPS)
+        let userLocation = null;
+        let userLocationMarker = null;
+        let userWatchId = null;
+        let followUser = true;
+        let userCenteredOnce = false;
+        let lastAreaRefreshAt = 0;
+        let lastUserFix = null;
+        let lastGeoError = null;
 
         // ============================================================
         // 2. MAPA
@@ -68,7 +82,6 @@ export function initializeGeoFastPe() {
 
         // Puntos del mapa cargados desde la API (GET /mapa/puntos)
         let servicesData = [];
-        let externalPoints = [];
         let puntosSeq = 0;
 
         let toastTimer;
@@ -78,6 +91,18 @@ export function initializeGeoFastPe() {
             el.classList.add('show');
             clearTimeout(toastTimer);
             toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+        }
+
+        // Indicador persistente: muestra si la ubicación es GPS real o aproximada.
+        function setGpsStatus(text, kind = '') {
+            let el = document.getElementById('gps-status');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'gps-status';
+                document.body.appendChild(el);
+            }
+            el.className = `gps-status${text ? ' visible' : ''}${kind ? ` ${kind}` : ''}`;
+            el.textContent = text || '';
         }
 
         // ============================================================
@@ -92,6 +117,7 @@ export function initializeGeoFastPe() {
             updateConnectivityBadge();
             autoLoadWeather();
             setInterval(autoLoadWeather, 5 * 60 * 1000);
+            startUserLocationTracking();
             toast('GeoFastPe listo');
         });
 
@@ -451,13 +477,13 @@ export function initializeGeoFastPe() {
                 .addTo(map);
 
             centerPin.on('dragend', () => {
+                followUser = false;
                 const pos = centerPin.getLngLat();
                 currentCenter = { lat: pos.lat, lng: pos.lng };
                 currentCityName = 'Zona personalizada';
                 addRadiusCircle();
                 updateServices();
                 autoLoadWeather();
-                if (routeDestination) calculateRoute(routeDestination.lat, routeDestination.lng);
                 toast(`Zona: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`);
             });
         }
@@ -509,12 +535,14 @@ export function initializeGeoFastPe() {
                 });
                 map.addLayer({
                     id: 'radius-line-outer', type: 'line', source: 'radius-circle',
-                    paint: { 'line-color': lineOuterColor, 
-                        'line-width': 6, 'line-opacity': 0.45, 'line-join': 'round', 'line-cap': 'round' }
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: { 'line-color': lineOuterColor,
+                        'line-width': 6, 'line-opacity': 0.45 }
                 });
                 map.addLayer({
                     id: 'radius-line', type: 'line', source: 'radius-circle',
-                    paint: { 'line-color': lineMainColor, 'line-width': 6, 'line-opacity': 0.45, 'line-join': 'round', 'line-cap': 'round' }
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: { 'line-color': lineMainColor, 'line-width': 6, 'line-opacity': 0.45 }
                 });
             }
         }
@@ -643,6 +671,10 @@ function makePointMarker(point) {
     } else if (kind === 'SOLIDARIDAD') {
         icono = 'heart';
         nombreTipo = 'Solidaridad';
+
+        // TODO: Diferenciar donaciones y solicitudes de ayuda.
+        // TODO: Mostrar estado de la publicación.
+        // TODO: Abrir detalle de la publicación.
     } else if (kind === 'EVENTO') {
         icono = 'calendar';
         nombreTipo = 'Evento';
@@ -686,91 +718,115 @@ function makePointMarker(point) {
 
 
         // Evita insertar texto recibido del backend directamente como HTML.
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+        }
+
         function makePointPopup(point) {
-            const content = document.createElement('div');
-            content.style.cssText = 'font-family:inherit;max-width:260px;padding:3px 2px;color:#172033';
-            const title = document.createElement('strong');
-            title.textContent = point.title || 'Punto comunitario';
-            title.style.cssText = 'display:block;font-size:14px;margin-bottom:6px';
-            const kind = document.createElement('span');
-            kind.textContent = ({SERVICIO:'Servicio',EMERGENCIA:'Emergencia',VENTA:'Venta',SOLIDARIDAD:'Solidaridad',EVENTO:'Evento',REPORTE:'Reporte'})[String(point.kind || '').toUpperCase()] || point.kind || 'Publicación';
-            kind.style.cssText = 'display:inline-block;background:#f1eaff;color:#6d28d9;border-radius:20px;padding:3px 8px;font-size:10px;font-weight:700;margin-bottom:7px';
-            const description = document.createElement('p');
-            description.textContent = point.description || 'Sin descripción disponible.';
-            description.style.cssText = 'font-size:12px;line-height:1.45;margin:0 0 7px;color:#475569;white-space:normal';
-            content.append(title, kind, description);
-            const detail = [point.category, point.type, point.location, point.status, point.ownerName || point.authorName]
-                .filter(Boolean).join(' · ');
-            if (detail) {
-                const meta = document.createElement('small');
-                meta.textContent = detail;
-                meta.style.cssText = 'display:block;font-size:10px;color:#64748b;margin-top:5px';
-                content.append(meta);
-            }
-            if (point.date || point.time) {
-                const date = document.createElement('small');
-                date.textContent = [point.date, point.time].filter(Boolean).join(' · ');
-                date.style.cssText = 'display:block;font-size:10px;color:#64748b;margin-top:4px';
-                content.append(date);
-            }
-            return new maplibregl.Popup({ offset: 18, maxWidth: '300px' }).setDOMContent(content);
+            const kindNames = { SERVICIO: 'Servicio', EMERGENCIA: 'Emergencia', VENTA: 'Venta', SOLIDARIDAD: 'Solidaridad', EVENTO: 'Evento', REPORTE: 'Reporte' };
+            const type = kindNames[String(point.kind || '').toUpperCase()] || 'Publicación';
+            const rows = [];
+            if (point.category) rows.push(`<div><b>Categoría:</b> ${escapeHtml(point.category)}</div>`);
+            if (point.type) rows.push(`<div><b>Tipo:</b> ${escapeHtml(point.type)}</div>`);
+            if (point.description) rows.push(`<div><b>Descripción:</b> ${escapeHtml(point.description)}</div>`);
+            if (point.location) rows.push(`<div><b>Ubicación:</b> ${escapeHtml(point.location)}</div>`);
+            if (point.status) rows.push(`<div><b>Estado:</b> ${escapeHtml(point.status)}</div>`);
+            if (point.priority) rows.push(`<div><b>Prioridad:</b> ${escapeHtml(point.priority)}</div>`);
+            if (point.ownerName) rows.push(`<div><b>Publicado por:</b> ${escapeHtml(point.ownerName)}</div>`);
+            if (point.date) rows.push(`<div><b>Fecha:</b> ${escapeHtml(point.date)}${point.time ? ` · ${escapeHtml(point.time)}` : ''}</div>`);
+            rows.push(`<div><b>Distancia:</b> ${(Number(point.distance || 0) / 1000).toFixed(2)} km</div>`);
+            const content = `<div style="font-family:inherit;max-width:280px;line-height:1.45"><strong style="font-size:15px">${escapeHtml(point.title || 'Punto comunitario')}</strong><div style="color:#7c3aed;font-size:11px;font-weight:700;margin:3px 0 8px">${type}</div>${rows.map(r => `<div style="font-size:12px;margin:3px 0">${r}</div>`).join('')}</div>`;
+            return new maplibregl.Popup({ offset: 18, maxWidth: '320px' }).setHTML(content);
+        }
+
+        function mapCacheKey() {
+            return `geofastpe_map_${currentCenter.lat.toFixed(3)}_${currentCenter.lng.toFixed(3)}_${currentRadius}_${selectedServiceCategory}`;
+        }
+
+        function readMapCache() {
+            try {
+                const global = JSON.parse(localStorage.getItem('geofastpe_map_all_v1') || 'null');
+                if (Array.isArray(global?.points) && global.points.length) return global.points;
+                const raw = localStorage.getItem(mapCacheKey());
+                return raw ? JSON.parse(raw).points || [] : [];
+            } catch { return []; }
+        }
+
+        function writeMapCache(points) {
+            try {
+                const previous = JSON.parse(localStorage.getItem('geofastpe_map_all_v1') || 'null')?.points || [];
+                const merged = new Map();
+                [...previous, ...(Array.isArray(points) ? points : [])].forEach(point => {
+                    const key = point.id != null ? String(point.id) : `${point.kind || point.type || ''}:${point.lat}:${point.lng}:${point.title || ''}`;
+                    merged.set(key, point);
+                });
+                const saved = [...merged.values()];
+                localStorage.setItem('geofastpe_map_all_v1', JSON.stringify({ savedAt: Date.now(), points: saved }));
+                localStorage.setItem(mapCacheKey(), JSON.stringify({ savedAt: Date.now(), points: saved }));
+            } catch {}
+        }
+
+        function mergePendingOfflinePoints(points) {
+            try {
+                const queue = JSON.parse(localStorage.getItem('geofastpe_offline_queue') || '[]');
+                for (const item of queue) {
+                    const b = item.body || {};
+                    let kind = null;
+                    if (String(item.endpoint || '').startsWith('/servicios')) kind = 'SERVICIO';
+                    if (String(item.endpoint || '').startsWith('/eventos')) kind = 'EVENTO';
+                    if (String(item.endpoint || '').startsWith('/reportes')) kind = 'REPORTE';
+                    if (String(item.endpoint || '').startsWith('/ventas')) kind = 'VENTA';
+                    if (String(item.endpoint || '').startsWith('/emergencias')) kind = 'EMERGENCIA';
+                    if (String(item.endpoint || '').startsWith('/solidaridad')) kind = 'SOLIDARIDAD';
+                    if (!kind || !Number.isFinite(Number(b.lat ?? b.latitude)) || !Number.isFinite(Number(b.lng ?? b.longitude))) continue;
+                    const lat = Number(b.lat ?? b.latitude), lng = Number(b.lng ?? b.longitude);
+                    if (calcDist(currentCenter.lat,currentCenter.lng,lat,lng) > currentRadius) continue;
+                    points.push({ kind, id:`offline-${item.queuedAt}`, title:b.title || b.name || 'Publicación pendiente', category:b.category, type:b.type, description:b.description, lat, lng, distance:calcDist(currentCenter.lat,currentCenter.lng,lat,lng), location:b.location || b.address, status:'Pendiente de sincronización', priority:b.priority, ownerName:'Este dispositivo', image:b.image, date:b.date, time:b.time });
+                }
+            } catch {}
+            return points;
+        }
+
+        function renderMapPoints(points) {
+            servicesData = points.map(p => ({ ...p, name: p.title }));
+            markers.forEach(m => m.remove());
+            markers = [];
+            servicesData.forEach(point => {
+                const lat = Number(point.lat), lng = Number(point.lng);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+                const el = makePointMarker(point);
+                markers.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).setPopup(makePointPopup(point)).addTo(map));
+            });
+            window.dispatchEvent(new CustomEvent('geofastpe:services', { detail: { count: servicesData.length, radius: currentRadius, category: selectedServiceCategory, services: servicesData } }));
         }
 
         async function updateServices() {
             const tipo = tipoDePuntos();
             const seq = ++puntosSeq;
-            const cacheKey = `geofastpe-map:${currentCenter.lat.toFixed(4)}:${currentCenter.lng.toFixed(4)}:${currentRadius}:${tipo || 'TODOS'}`;
-            let basePoints = [];
-            // El endpoint del backend admite SERVICIO/EMERGENCIA/VENTA/SOLIDARIDAD.
-            // Eventos y reportes se incorporan desde sus endpoints propios.
-            if (tipo !== 'NINGUNO' && tipo !== 'EVENTO' && tipo !== 'REPORTE') {
+            let puntos = [];
+            if (tipo !== 'NINGUNO') {
                 try {
                     const params = new URLSearchParams({ lat: currentCenter.lat, lng: currentCenter.lng, radio: currentRadius });
                     if (tipo) params.set('tipo', tipo);
-                    const res = await fetch(`${API_BASE}/mapa/puntos?${params}`);
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    basePoints = await res.json();
-                    if (!Array.isArray(basePoints)) throw new Error('Respuesta de puntos invalida');
-                    try { localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), points: basePoints })); } catch {}
+                    const url = `${API_BASE}/mapa/puntos?${params}`;
+                    if (!navigator.onLine) {
+                        puntos = readMapCache();
+                    } else {
+                        const res = await fetch(url);
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        puntos = await res.json();
+                        if (!Array.isArray(puntos)) throw new Error('Respuesta de puntos invalida');
+                        writeMapCache(puntos);
+                    }
                 } catch (e) {
-                    try {
-                        const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-                        if (Array.isArray(cached?.points)) basePoints = cached.points;
-                    } catch {}
-                    console.warn('No se pudieron cargar los puntos del mapa:', e);
-                    toast(navigator.onLine ? 'No se pudieron actualizar los puntos; mostrando datos guardados' : 'Sin conexión: mostrando puntos guardados');
+                    puntos = readMapCache();
+                    if (!puntos.length) console.warn('No se pudieron cargar los puntos del mapa:', e);
                 }
             }
             if (seq !== puntosSeq) return;
-            const normalizedExternal = externalPoints.map(p => ({...p, lat:Number(p.lat ?? p.latitude), lng:Number(p.lng ?? p.longitude)}));
-            let combined = [...basePoints, ...normalizedExternal];
-            if (tipo === 'EVENTO' || tipo === 'REPORTE') combined = normalizedExternal.filter(p => String(p.kind || '').toUpperCase() === tipo);
-            if (tipo === 'SERVICIO' || tipo === 'EMERGENCIA' || tipo === 'VENTA' || tipo === 'SOLIDARIDAD') combined = combined.filter(p => String(p.kind || '').toUpperCase() === tipo);
-            if (tipo === 'NINGUNO') combined = [];
-            const seen = new Set();
-            servicesData = combined.filter(p => {
-                const key = `${String(p.kind || '').toUpperCase()}:${p.id}`;
-                if (seen.has(key)) return false;
-                seen.add(key);
-                const lat = Number(p.lat), lng = Number(p.lng);
-                return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 && calcDist(currentCenter.lat,currentCenter.lng,lat,lng) <= currentRadius;
-            }).map(p => ({...p, name:p.title, distance:p.distance ?? calcDist(currentCenter.lat,currentCenter.lng,p.lat,p.lng)}));
-            markers.forEach(m => m.remove());
-            markers = [];
-            servicesData.forEach(point => {
-                const el = makePointMarker(point);
-                markers.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([Number(point.lng), Number(point.lat)]).setPopup(makePointPopup(point)).addTo(map));
-            });
-            toast(`${servicesData.length} puntos en radio`);
-            window.dispatchEvent(new CustomEvent('geofastpe:services', { detail: { count:servicesData.length, radius:currentRadius, category:selectedServiceCategory, services:servicesData }}));
-        }
-
-        function calcDist(lat1, lon1, lat2, lon2) {
-            const R = 6371e3;
-            const p1 = lat1 * Math.PI/180, p2 = lat2 * Math.PI/180;
-            const dp = (lat2-lat1) * Math.PI/180, dl = (lon2-lon1) * Math.PI/180;
-            const a = Math.sin(dp/2)**2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2)**2;
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            puntos = mergePendingOfflinePoints(puntos);
+            renderMapPoints(puntos);
+            toast(`${servicesData.length} puntos en radio${navigator.onLine ? '' : ' · sin conexión'}`);
         }
 
         // ============================================================
@@ -846,6 +902,7 @@ function makePointMarker(point) {
         // ============================================================
         document.getElementById('city-selector')?.addEventListener('change', (e) => {
             const city = CITIES[e.target.value];
+            followUser = false;
             currentCenter = { lat: city.lat, lng: city.lng };
             currentCityName = city.name;
             map.flyTo({ center: [city.lng, city.lat], zoom: city.zoom });
@@ -865,26 +922,324 @@ function makePointMarker(point) {
         });
 
         // ============================================================
-        // 13. GPS
+        // 13. UBICACIÓN DEL USUARIO (GPS en tiempo real)
         // ============================================================
-        document.getElementById('btn-gps')?.addEventListener('click', () => {
-            if (!navigator.geolocation) { toast('GPS no disponible'); return; }
-            toast('Obteniendo ubicación...');
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    currentCenter = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                    currentCityName = 'Mi ubicación';
-                    if (centerPin) centerPin.setLngLat([currentCenter.lng, currentCenter.lat]);
-                    map.flyTo({ center: [currentCenter.lng, currentCenter.lat], zoom: 16 });
-                    setTimeout(() => { addRadiusCircle(); updateServices(); autoLoadWeather(); }, 1200);
-                    toast(`GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
-                },
-                (err) => {
-                    const codes = { 1: 'Permiso denegado', 2: 'Posición no disponible', 3: 'Tiempo agotado' };
-                    toast('GPS: ' + (codes[err.code] || 'Error'));
-                },
-                { enableHighAccuracy: true, timeout: 15000 }
+
+        // Distancia aproximada entre dos coordenadas (haversine, metros).
+        function distanceMeters(a, b) {
+            const R = 6371000;
+            const toRad = (deg) => deg * Math.PI / 180;
+            const dLat = toRad(b.lat - a.lat);
+            const dLng = toRad(b.lng - a.lng);
+            const lat1 = toRad(a.lat);
+            const lat2 = toRad(b.lat);
+            const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+            return 2 * R * Math.asin(Math.sqrt(h));
+        }
+
+        function updateUserMarker(lat, lng, accuracy) {
+            if (!userLocationMarker) {
+                const el = document.createElement('div');
+                el.className = 'user-location-marker';
+                el.title = 'Tu ubicación';
+                el.innerHTML = '<span class="user-location-pulse"></span><span class="user-location-dot"></span>';
+                userLocationMarker = new maplibregl.Marker({ element: el, anchor: 'center' })
+                    .setLngLat([lng, lat])
+                    .addTo(map);
+            } else {
+                userLocationMarker.setLngLat([lng, lat]);
+            }
+
+            if (!(accuracy > 0)) return;
+            const circle = createGeoJSONCircle([lng, lat], accuracy / 1000, 64);
+            if (map.getSource('user-accuracy')) {
+                map.getSource('user-accuracy').setData(circle);
+            } else {
+                map.addSource('user-accuracy', { type: 'geojson', data: circle });
+                map.addLayer({
+                    id: 'user-accuracy-fill', type: 'fill', source: 'user-accuracy',
+                    paint: { 'fill-color': '#2563eb', 'fill-opacity': 0.14 }
+                });
+                map.addLayer({
+                    id: 'user-accuracy-line', type: 'line', source: 'user-accuracy',
+                    paint: { 'line-color': '#2563eb', 'line-width': 1.5, 'line-opacity': 0.4 }
+                });
+            }
+        }
+
+        // Aplica una lectura GPS: mueve el marcador y, si el seguimiento está activo,
+        // actualiza el centro de búsqueda (puntos, radio, clima y origen de rutas).
+        function applyUserPosition(position, { forceCenter = false, forceRefresh = false } = {}) {
+            const { latitude: lat, longitude: lng, accuracy = 0 } = position.coords || {};
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+            userLocation = { lat, lng, accuracy, updatedAt: Date.now() };
+            lastGeoError = null;
+            updateUserMarker(lat, lng, accuracy);
+
+            const meters = Math.round(accuracy || 0);
+            setGpsStatus(
+                accuracy > 500
+                    ? `Ubicación aproximada · ±${meters} m`
+                    : `GPS activo${meters ? ` · ±${meters} m` : ''}`,
+                accuracy > 500 ? 'warn' : 'ok'
             );
+
+            if (!followUser) return;
+
+            const moved = lastUserFix ? distanceMeters(lastUserFix, userLocation) : Infinity;
+            const previousCenter = { ...currentCenter };
+            lastUserFix = { lat, lng };
+            currentCenter = { lat, lng };
+            currentCityName = 'Mi ubicación';
+            if (centerPin) centerPin.setLngLat([lng, lat]);
+
+            // Mientras el seguimiento esté activo el mapa acompaña al usuario,
+            // incluso cuando una nueva lectura GPS corrige la posición.
+            const centerDistance = distanceMeters(previousCenter, { lat, lng });
+            const shouldCenter = forceCenter || !userCenteredOnce || centerDistance > 10;
+            if (shouldCenter) {
+                const targetZoom = Math.max(map.getZoom(), 15);
+                // easeTo es inmediato y predecible; flyTo puede tardar varios
+                // segundos en distancias largas y parecer que no hace nada.
+                map.easeTo(
+                    forceCenter || !userCenteredOnce
+                        ? { center: [lng, lat], zoom: targetZoom, duration: 1100 }
+                        : { center: [lng, lat], duration: 700 }
+                );
+                userCenteredOnce = true;
+            }
+
+            if (forceRefresh || moved > 25) addRadiusCircle();
+
+            const now = Date.now();
+            if (forceRefresh || moved > 100 || now - lastAreaRefreshAt > 60000) {
+                lastAreaRefreshAt = now;
+                updateServices();
+                autoLoadWeather();
+            }
+
+            if (shouldCenter) {
+                toast(
+                    accuracy > 500
+                        ? `Ubicación aproximada · precisión ±${meters} m. Activa la ubicación de Windows.`
+                        : `Ubicación actualizada${meters ? ` · precisión ±${meters} m` : ''}`
+                );
+            }
+        }
+
+        function handleGeolocationError(error) {
+            const messages = {
+                1: 'Bloqueaste la ubicación. Habilítala en el candado del navegador.',
+                2: 'Ubicación no disponible. Activa la ubicación de Windows.',
+                3: 'No se pudo obtener la ubicación a tiempo'
+            };
+            lastGeoError = {
+                code: error?.code || 0,
+                message: messages[error?.code] || error?.message || 'desconocido',
+                at: Date.now()
+            };
+            setGpsStatus(
+                error?.code === 1
+                    ? 'Ubicación bloqueada · actívala en el navegador'
+                    : 'Sin GPS · se usará ubicación aproximada',
+                'error'
+            );
+            toast(messages[error?.code] || 'No se pudo obtener tu ubicación');
+            if (error?.code === 1 && userWatchId !== null) {
+                navigator.geolocation.clearWatch(userWatchId);
+                userWatchId = null;
+            }
+        }
+
+        // Mantiene la ubicación actualizada mientras el usuario se desplaza.
+        function startUserLocationTracking() {
+            if (!('geolocation' in navigator) || userWatchId !== null) return;
+            if (!window.isSecureContext) {
+                setGpsStatus('Abre la app en localhost o HTTPS para usar el GPS', 'error');
+                return;
+            }
+            if (!userLocation) setGpsStatus('Buscando señal GPS…', 'pending');
+            userWatchId = navigator.geolocation.watchPosition(
+                (position) => applyUserPosition(position),
+                handleGeolocationError,
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+            );
+        }
+
+        // Escucha varias lecturas y devuelve la de mejor precisión dentro de una
+        // ventana corta. Así el navegador tiene tiempo de refinar la posición
+        // (WiFi/GPS) en lugar de quedarse con la primera lectura, que suele ser
+        // imprecisa o provenir de la red.
+        function getBestUserPosition({ timeoutMs = 12000, targetAccuracy = 30, highAccuracy = true } = {}) {
+            if (!('geolocation' in navigator) || !window.isSecureContext) {
+                return Promise.reject(Object.assign(new Error('Geolocalización no disponible'), { code: 2 }));
+            }
+            const cached = userLocation;
+            if (
+                cached && !cached.approximate && cached.accuracy > 0 &&
+                cached.accuracy <= targetAccuracy && Date.now() - cached.updatedAt < 15000
+            ) {
+                return Promise.resolve({
+                    coords: { latitude: cached.lat, longitude: cached.lng, accuracy: cached.accuracy }
+                });
+            }
+            return new Promise((resolve, reject) => {
+                let best = null;
+                let lastError = null;
+                let settled = false;
+                let watchId = null;
+                let timer = null;
+                let softTimer = null;
+
+                const finish = (result, error) => {
+                    if (settled) return;
+                    settled = true;
+                    if (timer) clearTimeout(timer);
+                    if (softTimer) clearTimeout(softTimer);
+                    if (watchId !== null) {
+                        try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
+                        watchId = null;
+                    }
+                    if (result) resolve(result);
+                    else reject(error || lastError || Object.assign(new Error('Ubicación no disponible'), { code: 2 }));
+                };
+
+                timer = setTimeout(() => {
+                    finish(best, best ? null : Object.assign(new Error('Tiempo de espera agotado'), { code: 3 }));
+                }, timeoutMs);
+
+                // Si en 4 s ya hay alguna lectura, se usa la mejor disponible; si la
+                // precisión mejora antes, se resuelve de inmediato.
+                softTimer = setTimeout(() => { if (best) finish(best); }, 4000);
+
+                watchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        const accuracy = Number(position.coords?.accuracy ?? Infinity);
+                        if (!best || accuracy < Number(best.coords?.accuracy ?? Infinity)) best = position;
+                        if (accuracy > 0 && accuracy <= targetAccuracy) finish(best);
+                    },
+                    (error) => {
+                        lastError = error;
+                        if (error?.code === 1) finish(null, error);
+                    },
+                    { enableHighAccuracy: highAccuracy, timeout: timeoutMs, maximumAge: 0 }
+                );
+            });
+        }
+
+        // Respaldo cuando el navegador no puede dar GPS: ubicación aproximada por IP.
+        async function fetchApproximateLocation() {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 4000);
+            try {
+                const response = await fetch('https://ipwho.is/?fields=success,latitude,longitude,city', {
+                    signal: controller.signal,
+                    cache: 'no-store'
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                if (!data?.success || !Number.isFinite(Number(data.latitude)) || !Number.isFinite(Number(data.longitude))) {
+                    throw new Error('Sin coordenadas');
+                }
+                return { lat: Number(data.latitude), lng: Number(data.longitude), city: data.city || '' };
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        function applyApproximateLocation(approx) {
+            followUser = true;
+            userCenteredOnce = true;
+            lastUserFix = { lat: approx.lat, lng: approx.lng };
+            userLocation = { lat: approx.lat, lng: approx.lng, accuracy: 0, approximate: true, updatedAt: Date.now() };
+            updateUserMarker(approx.lat, approx.lng, 0);
+            setGpsStatus('Ubicación aproximada por IP · activa la ubicación de Windows', 'warn');
+            currentCenter = { lat: approx.lat, lng: approx.lng };
+            currentCityName = approx.city ? `${approx.city} (aprox.)` : 'Ubicación aproximada';
+            if (centerPin) centerPin.setLngLat([approx.lng, approx.lat]);
+            map.easeTo({ center: [approx.lng, approx.lat], zoom: 12, duration: 1100 });
+            addRadiusCircle();
+            lastAreaRefreshAt = Date.now();
+            updateServices();
+            autoLoadWeather();
+        }
+
+        // Recentra el mapa en la ubicación real y reactiva el seguimiento.
+        async function locateMe({ silent = false } = {}) {
+            if (!silent) {
+                toast('Obteniendo ubicación...');
+                setGpsStatus('Buscando señal GPS…', 'pending');
+            }
+
+            let position = null;
+            let reason = '';
+            if ('geolocation' in navigator && window.isSecureContext) {
+                try {
+                    // Primero alta precisión: espera hasta 12 s para que el navegador
+                    // combine GPS/WiFi y entregue la lectura más exacta.
+                    position = await getBestUserPosition({ timeoutMs: 12000, targetAccuracy: 30, highAccuracy: true });
+                } catch (firstError) {
+                    const retryable = firstError?.code === 2 || firstError?.code === 3;
+                    if (retryable) {
+                        try {
+                            // Reintento de baja precisión (red/WiFi), sin exigir exactitud.
+                            position = await getBestUserPosition({ timeoutMs: 10000, targetAccuracy: 1000, highAccuracy: false });
+                        } catch (retryError) {
+                            handleGeolocationError(retryError);
+                            reason = retryError?.message || 'GPS no disponible';
+                        }
+                    } else {
+                        handleGeolocationError(firstError);
+                        reason = firstError?.message || 'permiso denegado';
+                    }
+                }
+            } else {
+                reason = 'el GPS requiere localhost o HTTPS';
+                setGpsStatus('Abre la app en localhost o HTTPS para usar el GPS', 'error');
+            }
+
+            if (position) {
+                followUser = true;
+                userCenteredOnce = false;
+                applyUserPosition(position, { forceCenter: true, forceRefresh: true });
+                startUserLocationTracking();
+                return { ...userLocation };
+            }
+
+            // Último recurso: ubicación aproximada por IP para que el mapa no quede en Lima.
+            try {
+                const approx = await fetchApproximateLocation();
+                applyApproximateLocation(approx);
+                if (!silent) toast(`Ubicación aproximada${approx.city ? `: ${approx.city}` : ''}${reason ? ` (${reason})` : ''}`);
+                return { ...userLocation };
+            } catch (fallbackError) {
+                lastGeoError = lastGeoError || {
+                    code: 0,
+                    message: 'No se pudo obtener tu ubicación',
+                    at: Date.now()
+                };
+                setGpsStatus('No se pudo obtener tu ubicación', 'error');
+                if (!silent) {
+                    toast('No se pudo obtener tu ubicación. Revisa el permiso del navegador y la ubicación de Windows.');
+                }
+                return userLocation ? { ...userLocation } : null;
+            }
+        }
+
+        // Al desplazar el mapa manualmente se deja de seguir al usuario para no
+        // "arrastrar" el centro de búsqueda fuera de la vista. El botón GPS lo reactiva.
+        map.on('dragstart', () => { followUser = false; });
+
+        document.getElementById('btn-gps')?.addEventListener('click', () => {
+            locateMe().catch(() => {});
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (userWatchId !== null) {
+                navigator.geolocation.clearWatch(userWatchId);
+                userWatchId = null;
+            }
         });
 
         // ============================================================
@@ -900,10 +1255,42 @@ function makePointMarker(point) {
                 ['route-line', 'route-line-casing'].forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
                 if (map.getSource('route-source')) map.removeSource('route-source');
                 routeGeoJSON = null;
-                routeDestination = null;
+                if (routeDestinationMarker) { routeDestinationMarker.remove(); routeDestinationMarker = null; }
+                lastRouteDestination = null;
             }
         });
 
+        async function fetchRouteData(origin, destination) {
+            const params = new URLSearchParams({
+                modo: currentRouteMode,
+                origenLat: origin.lat, origenLng: origin.lng,
+                destinoLat: destination.lat, destinoLng: destination.lng
+            });
+            try {
+                const response = await fetch(`${API_BASE}/geo/ruta?${params}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const result = await response.json();
+                if (result?.geometry?.coordinates?.length) return result;
+            } catch (error) { console.warn('Ruta backend no disponible; se intenta el servicio de rutas público.', error); }
+            const url = `${ROUTE_URLS[currentRouteMode]}/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Servicio de rutas: HTTP ${response.status}`);
+            const payload = await response.json();
+            const route = payload.routes?.[0];
+            if (!route?.geometry?.coordinates?.length) throw new Error('No se encontró una ruta.');
+            return { geometry: route.geometry, distanceMeters: route.distance, durationSeconds: route.duration };
+        }
+
+        async function recalculateLastRoute() {
+            if (!lastRouteDestination || !navigator.onLine) return;
+            try {
+                const data = await fetchRouteData(currentCenter, lastRouteDestination);
+                routeGeoJSON = data.geometry;
+                redrawRoute();
+                if (map.getLayer('route-line')) map.setPaintProperty('route-line', 'line-color', getRouteColor());
+                toast(`Ruta recalculada · ${(Number(data.distanceMeters)/1000).toFixed(1)} km · ${Math.round(Number(data.durationSeconds)/60)} min`);
+            } catch { toast('No se pudo recalcular la ruta'); }
+        }
         document.querySelectorAll('.route-mode').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.route-mode').forEach(b => b.classList.remove('active'));
@@ -911,7 +1298,7 @@ function makePointMarker(point) {
                 currentRouteMode = btn.dataset.mode;
                 const labels = { driving: 'Auto', walking: 'A pie', cycling: 'Bici' };
                 toast(`Modo: ${labels[currentRouteMode]}`);
-                if (routeDestination) calculateRoute(routeDestination.lat, routeDestination.lng);
+                recalculateLastRoute();
             });
         });
 
@@ -940,139 +1327,217 @@ function makePointMarker(point) {
             return '#3b82f6';
         }
 
-        async function calculateRoute(destLat, destLng) {
-            toast('Calculando ruta...');
-            try {
-                const params = new URLSearchParams({
-                    modo: currentRouteMode,
-                    origenLat: currentCenter.lat,
-                    origenLng: currentCenter.lng,
-                    destinoLat: destLat,
-                    destinoLng: destLng
-                });
-                const res = await fetch(`${API_BASE}/geo/ruta?${params}`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                if (!data.geometry) throw new Error('La API no devolvió geometría');
-                routeGeoJSON = data.geometry;
-                routeDestination = { lat: destLat, lng: destLng };
-                const dist = (data.distanceMeters / 1000).toFixed(1);
-                const dur = Math.round(data.durationSeconds / 60);
-                redrawRoute();
-                if (map.getLayer('route-line')) map.setPaintProperty('route-line', 'line-color', getRouteColor());
-                const labels = { driving: 'Auto', walking: 'A pie', cycling: 'Bicicleta' };
-                toast(`${labels[currentRouteMode]}: ${dist} km · ${dur} min`);
-                const coords = routeGeoJSON.coordinates;
-                const bounds = coords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
-                map.fitBounds(bounds, { padding: 80 });
-            } catch (err) {
-                console.warn('No se pudo recalcular la ruta:', err);
-                toast(navigator.onLine ? 'No se pudo calcular la ruta' : 'Ruta no disponible sin conexión para este trayecto');
-            }
-        }
-
         map.on('click', async (e) => {
             if (!routingMode) return;
-            await calculateRoute(e.lngLat.lat, e.lngLat.lng);
+            const destLng = e.lngLat.lng;
+            const destLat = e.lngLat.lat;
+            lastRouteDestination = { lat: destLat, lng: destLng };
+            if (routeDestinationMarker) routeDestinationMarker.remove();
+            const destinationElement = document.createElement('div');
+            destinationElement.style.cssText = 'width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#e11d48;box-shadow:0 2px 10px #1118;';
+            routeDestinationMarker = new maplibregl.Marker({ element: destinationElement, anchor: 'center' })
+                .setLngLat([destLng, destLat]).addTo(map);
+            toast('Calculando ruta...');
+            try {
+                const routeKey = `geofastpe_route_${currentRouteMode}_${currentCenter.lat.toFixed(4)}_${currentCenter.lng.toFixed(4)}_${destLat.toFixed(4)}_${destLng.toFixed(4)}`;
+                let data = null;
+                if (!navigator.onLine) {
+                    try { data = JSON.parse(localStorage.getItem(routeKey) || 'null'); } catch {}
+                    if (!data) throw new Error('offline-route');
+                } else {
+                    data = await fetchRouteData(currentCenter, lastRouteDestination);
+                    try { localStorage.setItem(routeKey, JSON.stringify(data)); } catch {}
+                }
+                if (data.geometry) {
+                    routeGeoJSON = data.geometry;
+                    const dist = (data.distanceMeters / 1000).toFixed(1);
+                    const dur = Math.round(data.durationSeconds / 60);
+                    redrawRoute();
+
+                    // Actualizar color según modo
+                    if (map.getLayer('route-line')) {
+                        map.setPaintProperty('route-line', 'line-color', getRouteColor());
+                    }
+
+                    const labels = { driving: 'Auto', walking: 'A pie', cycling: 'Bicicleta' };
+                    toast(`${labels[currentRouteMode]}: ${dist} km · ${dur} min`);
+
+                    const coords = routeGeoJSON.coordinates;
+                    const bounds = coords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
+                    map.fitBounds(bounds, { padding: 80 });
+                } else toast('No se pudo calcular');
+            } catch (err) { toast('Error de ruta'); }
         });
 
         // ============================================================
         // 15. BÚSQUEDA
         // ============================================================
-        async function buscarLugar() {
-            const query = document.getElementById('search-input').value.trim();
+        function distanceBetween(a, b) {
+            const rad = v => v * Math.PI / 180;
+            const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+            const x = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+            return 6371000 * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+        }
+
+        async function routeToCoordinates(lat, lng, label = 'Destino') {
+            const destination = { lat: Number(lat), lng: Number(lng) };
+            if (!Number.isFinite(destination.lat) || !Number.isFinite(destination.lng)) throw new Error('Coordenadas no válidas');
+            lastRouteDestination = destination;
+            if (routeDestinationMarker) routeDestinationMarker.remove();
+            const markerEl = document.createElement('div');
+            markerEl.style.cssText = 'width:19px;height:19px;border:3px solid #fff;border-radius:50%;background:#e11d48;box-shadow:0 2px 10px #1118;';
+            routeDestinationMarker = new maplibregl.Marker({ element: markerEl, anchor: 'center' }).setLngLat([destination.lng, destination.lat]).addTo(map);
+            toast(`Calculando ruta a ${label}...`);
+            const key = `geofastpe_route_${currentRouteMode}_${currentCenter.lat.toFixed(4)}_${currentCenter.lng.toFixed(4)}_${destination.lat.toFixed(4)}_${destination.lng.toFixed(4)}`;
+            let data = null;
+            if (!navigator.onLine) {
+                try { data = JSON.parse(localStorage.getItem(key) || 'null'); } catch {}
+                if (!data) throw new Error('No hay una ruta guardada para este destino sin conexión.');
+            } else {
+                data = await fetchRouteData(currentCenter, destination);
+                try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
+            }
+            routeGeoJSON = data.geometry;
+            redrawRoute();
+            if (map.getLayer('route-line')) map.setPaintProperty('route-line', 'line-color', getRouteColor());
+            const coords = routeGeoJSON.coordinates;
+            const bounds = coords.reduce((b, c) => b.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
+            map.fitBounds(bounds, { padding: { top: 100, bottom: 100, left: 90, right: 90 } });
+            const km = (Number(data.distanceMeters || 0) / 1000).toFixed(1);
+            const min = Math.round(Number(data.durationSeconds || 0) / 60);
+            toast(`Ruta a ${label}: ${km} km · ${min} min`);
+            return { distanceMeters: data.distanceMeters, durationSeconds: data.durationSeconds };
+        }
+
+        async function routeToPlace(query) {
+            const q = String(query || '').trim();
+            if (!q) throw new Error('Indica el destino.');
+            let places = [];
+            if (navigator.onLine) {
+                try {
+                    const response = await fetch(`${API_BASE}/geo/buscar?${new URLSearchParams({ q, lat: currentCenter.lat, lng: currentCenter.lng })}`);
+                    if (response.ok) places = await response.json();
+                } catch {}
+                if (!places.length) {
+                    try {
+                        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=pe&q=${encodeURIComponent(q)}`, { headers: { Accept: 'application/json' } });
+                        if (response.ok) places = (await response.json()).map(x => ({ displayName: x.display_name, lat: Number(x.lat), lng: Number(x.lon) }));
+                    } catch {}
+                }
+            }
+            if (!Array.isArray(places) || !places.length) throw new Error('No se encontró el destino. Conéctate a internet para buscar lugares nuevos.');
+            const place = places.sort((a, b) => distanceBetween(currentCenter, { lat: Number(a.lat), lng: Number(a.lng) }) - distanceBetween(currentCenter, { lat: Number(b.lat), lng: Number(b.lng) }))[0];
+            return routeToCoordinates(place.lat, place.lng, place.displayName || q);
+        }
+
+        async function routeToPublication(query) {
+            const needle = normalizeLabel(query);
+            if (!needle) return null;
+            const candidates = servicesData.filter(p => normalizeLabel(`${p.title || ''} ${p.name || ''} ${p.category || ''} ${p.description || ''} ${p.location || ''}`).includes(needle));
+            if (!candidates.length) return null;
+            const hit = candidates.sort((a, b) => distanceBetween(currentCenter, { lat: Number(a.lat), lng: Number(a.lng ?? a.lon) }) - distanceBetween(currentCenter, { lat: Number(b.lat), lng: Number(b.lng ?? b.lon) }))[0];
+            const lat = Number(hit.lat ?? hit.latitude);
+            const lng = Number(hit.lng ?? hit.longitude ?? hit.lon);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+            return routeToCoordinates(lat, lng, hit.title || hit.name || query);
+        }
+
+        async function buscarLugar(options = {}) {
+            const input = document.getElementById('search-input');
+            const opts = options && typeof options === 'object' ? options : {};
+            const query = String(opts.placesQuery || input?.value || '').trim();
             if (!query) return;
             const resultsDiv = document.getElementById('search-results');
-            resultsDiv.innerHTML = '<div class="result-item">Buscando publicaciones y lugares...</div>';
+            resultsDiv.innerHTML = '<div class="result-item">Buscando publicaciones cercanas y después lugares...</div>';
             resultsDiv.classList.add('show');
-            const normalizedQuery = query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-            let matches = servicesData.filter(point => `${point.title || ''} ${point.description || ''} ${point.category || ''} ${point.type || ''} ${point.location || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(normalizedQuery));
-            // La búsqueda revisa primero todas las publicaciones del radar, no solo el filtro lateral activo.
-            if (!matches.length) {
+            const q = normalizeLabel(query);
+            const searchText = q.replace(/\b(busca|buscar|encuentra|encontrar|muestra|muestrame|show|find|search|cerca de mi|cerca de mí|en mi zona|por aqui|por aquí|eventos?|servicios?|reportes?|problemas?|ventas?|compras?|emergencias?|ayuda|solidaridad|cercanos?|cercanas?|cerca)\b/g, ' ').replace(/\s+/g, ' ').trim();
+            const termList = (Array.isArray(opts.terms) ? opts.terms : []).map(value => normalizeLabel(value)).filter(Boolean);
+            const smartCategory = opts.category || (q.includes('evento') ? 'EVENTO' : q.includes('servicio') ? 'SERVICIO' : (q.includes('reporte') || q.includes('problema')) ? 'REPORTE' : (q.includes('venta') || q.includes('compr')) ? 'VENTA' : q.includes('emerg') ? 'EMERGENCIA' : q.includes('ayuda') || q.includes('solidar') ? 'SOLIDARIDAD' : null);
+            const normalize = value => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const textOf = p => normalize(`${p.title || ''} ${p.name || ''} ${p.category || ''} ${p.type || ''} ${p.description || ''} ${p.location || ''} ${p.address || ''}`);
+            const matchesFilters = p => {
+                const text = textOf(p);
+                const textOk = termList.length ? termList.some(term => text.includes(term)) : (!searchText || text.includes(normalize(searchText)));
+                const categoryOk = !smartCategory || normalize(p.kind || p.type || '').includes(normalize(smartCategory));
+                return textOk && categoryOk;
+            };
+            const toSearchItem = p => ({ display_name: p.title || p.name || 'Publicación', lat: String(p.lat), lon: String(p.lng ?? p.lon), _dist: p.distance ?? distanceBetween(currentCenter, { lat: Number(p.lat), lng: Number(p.lng ?? p.lon) }), _point: p, _kind: p.kind || p.type || p.category || 'Publicación' });
+            let publications = servicesData.filter(matchesFilters).map(toSearchItem);
+            if (navigator.onLine) {
                 try {
-                    const params = new URLSearchParams({lat:currentCenter.lat,lng:currentCenter.lng,radio:currentRadius});
+                    const params = new URLSearchParams({ lat: currentCenter.lat, lng: currentCenter.lng, radio: currentRadius });
                     const response = await fetch(`${API_BASE}/mapa/puntos?${params}`);
                     if (response.ok) {
-                        const allPoints = await response.json();
-                        const all = [...(Array.isArray(allPoints) ? allPoints : []), ...externalPoints];
-                        matches = all.filter(point => calcDist(currentCenter.lat,currentCenter.lng,Number(point.lat),Number(point.lng)) <= currentRadius && `${point.title || ''} ${point.description || ''} ${point.category || ''} ${point.type || ''} ${point.location || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(normalizedQuery));
+                        const fresh = await response.json();
+                        if (Array.isArray(fresh)) {
+                            writeMapCache(fresh);
+                            const matches = fresh.filter(matchesFilters).map(toSearchItem);
+                            const known = new Set(publications.map(x => `${x._point?.kind}:${x._point?.id}`));
+                            publications = [...publications, ...matches.filter(x => !known.has(`${x._point?.kind}:${x._point?.id}`))];
+                        }
                     }
-                } catch (error) { console.debug('Búsqueda de publicaciones offline; se usarán los puntos cargados.', error); }
+                } catch {}
+            } else {
+                const cached = readMapCache().filter(matchesFilters).map(toSearchItem);
+                publications = [...publications, ...cached];
             }
-            if (matches.length) {
-                resultsDiv.innerHTML = '';
-                matches.forEach(point => {
-                    const item = document.createElement('div'); item.className = 'result-item';
-                    const strong = document.createElement('strong'); strong.textContent = point.title || 'Publicación';
-                    const small = document.createElement('small'); small.textContent = `${point.kind || 'Publicación'} · ${point.description || ''}`;
-                    item.append(strong, small);
-                    item.addEventListener('click', () => { map.flyTo({center:[Number(point.lng),Number(point.lat)],zoom:16,essential:true}); const marker=markers.find(m => { const ll=m.getLngLat(); return Math.abs(ll.lat-Number(point.lat))<0.000001 && Math.abs(ll.lng-Number(point.lng))<0.000001; }); marker?.togglePopup(); resultsDiv.classList.remove('show'); });
-                    resultsDiv.appendChild(item);
-                });
-                return;
+            publications.sort((a, b) => Number(a._dist ?? Infinity) - Number(b._dist ?? Infinity));
+
+            let places = [];
+            const shouldSearchPlaces = !smartCategory || !!searchText;
+            if (shouldSearchPlaces && navigator.onLine) {
+                try {
+                    const response = await fetch(`${API_BASE}/geo/buscar?${new URLSearchParams({ q: query, lat: currentCenter.lat, lng: currentCenter.lng })}`);
+                    if (response.ok) {
+                        const found = await response.json();
+                        places = (Array.isArray(found) ? found : []).map(place => ({ display_name: place.displayName || place.name || query, lat: String(place.lat), lon: String(place.lng ?? place.lon), _dist: place.distance ?? distanceBetween(currentCenter, { lat: Number(place.lat), lng: Number(place.lng ?? place.lon) }), _kind: 'Lugar del mapa' }));
+                    }
+                } catch {}
+                if (!places.length && searchText) {
+                    try {
+                        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&countrycodes=pe&q=${encodeURIComponent(searchText)}`, { headers: { Accept: 'application/json' } });
+                        if (response.ok) places = (await response.json()).map(place => ({ display_name: place.display_name, lat: place.lat, lon: place.lon, _dist: distanceBetween(currentCenter, { lat: Number(place.lat), lng: Number(place.lon) }), _kind: 'Lugar del mapa' }));
+                    } catch {}
+                }
             }
-            try {
-                const params = new URLSearchParams({
-                    q: query,
-                    lat: currentCenter.lat,
-                    lng: currentCenter.lng
-                });
-                const res = await fetch(`${API_BASE}/geo/buscar?${params}`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const lugares = await res.json();
-                const data = lugares.map(p => ({
-                    display_name: p.displayName,
-                    lat: String(p.lat),
-                    lon: String(p.lng),
-                    _dist: p.distance ?? undefined,
-                    _fuera: p.distance != null && p.distance > currentRadius
-                })).filter(place => place._dist == null || place._dist <= currentRadius);
-
-                if (data.length === 0) {
-                    resultsDiv.innerHTML = '<div class="result-item">No hay publicaciones ni lugares coincidentes dentro del radio seleccionado.</div>'; 
-                    return;
-                }
-
-                resultsDiv.innerHTML = '';
-                const esFallback = data.some(place => place._fuera);
-                if (esFallback) {
-                    const notice = document.createElement('div');
-                    notice.className = 'result-nearby';
-                    notice.innerText = 'Resultados cercanos (fuera del radio exacto):';
-                    resultsDiv.appendChild(notice);
-                }
-
-                data.forEach(place => {
-                    const item = document.createElement('div');
-                    item.className = 'result-item';
-                    const name = place.display_name.split(',')[0];
-                    const distText = place._dist ? ` · ${(place._dist / 1000).toFixed(1)} km` : '';
-                    item.innerHTML = `<strong>${name}${distText}</strong><small>${place.display_name}</small>`;
-                    item.addEventListener('click', () => {
-                        const lat = parseFloat(place.lat);
-                        const lon = parseFloat(place.lon);
+            places.sort((a, b) => Number(a._dist ?? Infinity) - Number(b._dist ?? Infinity));
+            const renderGroup = (title, rows, isPublication) => {
+                if (!rows.length) return;
+                const heading = document.createElement('div'); heading.className = 'gf-search-group'; heading.textContent = title; resultsDiv.appendChild(heading);
+                rows.slice(0, 8).forEach(place => {
+                    const item = document.createElement('div'); item.className = 'result-item gf-search-result';
+                    const name = String(place.display_name || 'Resultado').split(',')[0];
+                    const dist = place._dist != null ? `${(Number(place._dist) / 1000).toFixed(1)} km` : '';
+                    item.innerHTML = `<div class="gf-search-result-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(place._kind || place.display_name)}${dist ? ` · ${dist}` : ''}</small></div><div class="gf-search-result-actions"><button type="button" class="gf-search-show">Ver</button><button type="button" class="gf-search-route">Ruta</button></div>`;
+                    item.querySelector('.gf-search-show').addEventListener('click', () => {
+                        const lat = Number(place.lat), lon = Number(place.lon);
+                        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
                         if (searchMarker) searchMarker.remove();
-                        const el = document.createElement('div');
-                        el.innerHTML = pinSVG('#ef4444');
-                        el.style.display = 'block';
-                        searchMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-                            .setLngLat([lon, lat])
-                            .setPopup(new maplibregl.Popup({ offset: 12 }).setHTML(`<div style="font-family:inherit;"><b>${name}</b><br><small style="color:#64748b">${place.display_name}</small></div>`))
-                            .addTo(map);
-                        searchMarker.togglePopup();
-                        const bounds = new maplibregl.LngLatBounds();
-                        bounds.extend([currentCenter.lng, currentCenter.lat]);
-                        bounds.extend([lon, lat]);
-                        map.fitBounds(bounds, { padding: 120, maxZoom: 17 });
-                        resultsDiv.classList.remove('show');
-                        document.getElementById('search-input').value = '';
-                        toast('Resultado: ' + name);
+                        const el = document.createElement('div'); el.innerHTML = pinSVG('#ef4444'); el.style.display = 'block';
+                        const popup = isPublication && place._point ? makePointPopup(place._point) : new maplibregl.Popup({ offset: 12 }).setHTML(`<div><b>${escapeHtml(name)}</b><br><small>${escapeHtml(place.display_name)}</small></div>`);
+                        searchMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([lon, lat]).setPopup(popup).addTo(map); searchMarker.togglePopup();
+                        map.flyTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 16), essential: true }); resultsDiv.classList.remove('show');
+                    });
+                    item.querySelector('.gf-search-route').addEventListener('click', async () => {
+                        try { await routeToCoordinates(Number(place.lat), Number(place.lon), name); resultsDiv.classList.remove('show'); }
+                        catch (error) { toast(error.message || 'No se pudo calcular la ruta'); }
                     });
                     resultsDiv.appendChild(item);
                 });
-            } catch (e) { resultsDiv.innerHTML = '<div class="result-item">Error de búsqueda</div>'; }
+            };
+            resultsDiv.innerHTML = '';
+            renderGroup('PUBLICACIONES DE USUARIOS · MÁS CERCANAS', publications, true);
+            renderGroup('LUGARES Y DIRECCIONES DEL MAPA', places, false);
+            if (!publications.length && !places.length) resultsDiv.innerHTML = `<div class="result-item">No se encontraron publicaciones ni lugares para “${escapeHtml(query)}”. Prueba ampliar el radio.</div>`;
         }
         document.getElementById('search-btn')?.addEventListener('click', buscarLugar);
+        document.getElementById('search-voice-btn')?.addEventListener('click', () => {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) { toast('Tu navegador no admite búsqueda por voz'); return; }
+            const r = new SR(); r.lang = document.documentElement.lang === 'en' ? 'en-US' : document.documentElement.lang === 'pt' ? 'pt-BR' : 'es-PE'; r.interimResults = false;
+            r.onresult = e => { const input = document.getElementById('search-input'); if (input) { input.value = e.results[0][0].transcript; buscarLugar(); } }; r.onerror = () => toast('No se pudo usar el micrófono'); r.start();
+        });
         document.getElementById('search-input')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') buscarLugar(); });
         document.addEventListener('click', (e) => { if (!document.getElementById('search-container').contains(e.target)) document.getElementById('search-results').classList.remove('show'); });
 
@@ -1085,11 +1550,9 @@ function makePointMarker(point) {
         let cloudsArray = [];
 
         async function autoLoadWeather() {
+            const weatherKey = `geofastpe_weather_${currentCenter.lat.toFixed(2)}_${currentCenter.lng.toFixed(2)}`;
             if (!navigator.onLine) {
-                document.getElementById('weather-card').classList.remove('show');
-                stopClouds();
-                clearWindArrows();
-                if (cloudIndicatorMarker) { cloudIndicatorMarker.remove(); cloudIndicatorMarker = null; }
+                try { const cached = JSON.parse(localStorage.getItem(weatherKey) || 'null'); if (cached?.data) { currentWeatherData = cached.data; renderWeatherCard(cached.data); renderCloudIndicator(cached.data.cloud_cover); startClouds(cached.data.cloud_cover, cached.data.wind_direction_10m, cached.data.wind_speed_10m); renderWindArrows(cached.data.wind_direction_10m, cached.data.wind_speed_10m); } } catch {}
                 return;
             }
             try {
@@ -1097,6 +1560,7 @@ function makePointMarker(point) {
                 const res = await fetch(`${API_BASE}/geo/clima?${params}`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const cur = await res.json();
+                try { localStorage.setItem(weatherKey, JSON.stringify({ savedAt: Date.now(), data: cur })); } catch {}
                 currentWeatherData = cur;
                 renderWeatherCard(cur);
                 renderCloudIndicator(cur.cloud_cover);
@@ -1157,38 +1621,63 @@ function makePointMarker(point) {
 
         function startClouds(coverage, windDirection, windSpeed) {
             stopClouds();
-            if (coverage < 10) return;
-            const count = Math.min(15, Math.max(4, Math.floor(coverage / 8)));
+            const amount = Math.max(0, Math.min(100, Number(coverage) || 0));
+            if (amount < 5) return;
+            // Las nubes se guardan como coordenadas geográficas. No hay
+            // intervalos que las desplacen: al mover/zoom del mapa permanecen
+            // ancladas al mismo punto del terreno.
+            const count = Math.min(24, Math.max(4, Math.round(amount / 4)));
+            const spread = Math.max(0.025, Math.min(0.22, 0.025 + amount / 650));
             cloudsArray = [];
-            const spread = 0.18;
+            let seed = Math.round((currentCenter.lat + 90) * 10000 + (currentCenter.lng + 180) * 1000 + amount);
+            const random = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
             for (let i = 0; i < count; i++) {
-                cloudsArray.push({ lng: currentCenter.lng + (Math.random() - 0.5) * spread, lat: currentCenter.lat + (Math.random() - 0.5) * spread, size: 120 + Math.random() * 200, opacity: 0.08 + Math.random() * 0.1 });
+                cloudsArray.push({
+                    lng: currentCenter.lng + (random() - 0.5) * spread,
+                    lat: currentCenter.lat + (random() - 0.5) * spread,
+                    size: 90 + random() * 180,
+                    opacity: 0.045 + (amount / 100) * 0.13
+                });
             }
             const geojson = cloudsToGeoJSON(cloudsArray);
             if (!map.getSource('clouds-source')) {
                 map.addSource('clouds-source', { type: 'geojson', data: geojson });
-                const cloudColor = isDarkMode ? '#3a4a68' : '#1a2035';
-                const style = map.getStyle();
-                const firstSymbol = style.layers.find(l => l.type === 'symbol');
-                const layerDef = { id: 'clouds-layer', type: 'circle', source: 'clouds-source', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, ['*', ['get', 'size'], 0.6], 14, ['get', 'size'], 18, ['*', ['get', 'size'], 1.8]], 'circle-color': cloudColor, 'circle-blur': 1.2, 'circle-opacity': ['get', 'opacity'] } };
+                const cloudColor = isDarkMode ? '#53627a' : '#263247';
+                const firstSymbol = map.getStyle().layers.find(layer => layer.type === 'symbol');
+                const layerDef = {
+                    id: 'clouds-layer', type: 'circle', source: 'clouds-source',
+                    paint: {
+                        'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, ['*', ['get', 'size'], 0.42], 12, ['get', 'size'], 17, ['*', ['get', 'size'], 1.5]],
+                        'circle-color': cloudColor,
+                        'circle-blur': 1,
+                        'circle-opacity': ['get', 'opacity']
+                    }
+                };
                 if (firstSymbol) map.addLayer(layerDef, firstSymbol.id);
                 else map.addLayer(layerDef);
-            } else { map.getSource('clouds-source').setData(geojson); }
-
-            const speedFactor = Math.max(windSpeed, 5) / 20;
-            const windToRad = ((windDirection + 180) % 360) * Math.PI / 180;
-            const dx = Math.sin(windToRad) * 0.0003 * speedFactor;
-            const dy = Math.cos(windToRad) * 0.0003 * speedFactor;
-
-            cloudAnimationInterval = setInterval(() => {
-                if (!map.getSource('clouds-source')) return;
-                cloudsArray.forEach(c => { c.lng += dx; c.lat += dy; if (c.lng > currentCenter.lng + spread / 2) c.lng -= spread; if (c.lng < currentCenter.lng - spread / 2) c.lng += spread; if (c.lat > currentCenter.lat + spread / 2) c.lat -= spread; if (c.lat < currentCenter.lat - spread / 2) c.lat += spread; });
-                map.getSource('clouds-source').setData(cloudsToGeoJSON(cloudsArray));
-            }, 200);
+            } else {
+                map.getSource('clouds-source').setData(geojson);
+            }
         }
 
-        function cloudsToGeoJSON(arr) { return { type: 'FeatureCollection', features: arr.map(c => ({ type: 'Feature', properties: { size: c.size, opacity: c.opacity }, geometry: { type: 'Point', coordinates: [c.lng, c.lat] } })) }; }
-        function stopClouds() { if (cloudAnimationInterval) clearInterval(cloudAnimationInterval); cloudAnimationInterval = null; if (map.getLayer('clouds-layer')) map.removeLayer('clouds-layer'); if (map.getSource('clouds-source')) map.removeSource('clouds-source'); cloudsArray = []; }
+        function cloudsToGeoJSON(arr) {
+            return {
+                type: 'FeatureCollection',
+                features: arr.map(cloud => ({
+                    type: 'Feature',
+                    properties: { size: cloud.size, opacity: cloud.opacity },
+                    geometry: { type: 'Point', coordinates: [cloud.lng, cloud.lat] }
+                }))
+            };
+        }
+
+        function stopClouds() {
+            if (cloudAnimationInterval) clearInterval(cloudAnimationInterval);
+            cloudAnimationInterval = null;
+            if (map.getLayer('clouds-layer')) map.removeLayer('clouds-layer');
+            if (map.getSource('clouds-source')) map.removeSource('clouds-source');
+            cloudsArray = [];
+        }
 
         function renderWindArrows(direction, speed) {
             clearWindArrows();
@@ -1219,9 +1708,51 @@ function makePointMarker(point) {
         function updateConnectivityBadge() {
             const badge = document.getElementById('connectivity-badge');
             if (navigator.onLine) { badge.classList.remove('offline'); badge.innerText = 'En línea'; }
-            else { badge.classList.add('offline'); badge.innerText = 'Sin conexión'; document.getElementById('weather-card').classList.remove('show'); stopClouds(); clearWindArrows(); if (cloudIndicatorMarker) { cloudIndicatorMarker.remove(); cloudIndicatorMarker = null; } }
+            else {
+                badge.classList.add('offline');
+                badge.innerText = 'Sin conexión · datos guardados';
+                // No borrar capas meteorológicas ni puntos: son recursos
+                // geográficos ya descargados y siguen siendo útiles offline.
+            }
         }
-        window.addEventListener('online', () => { updateConnectivityBadge(); toast('Conexión restaurada'); autoLoadWeather(); });
+        // ============================================================
+        // 19. NOTIFICACIONES DE NOVEDADES CERCANAS
+        // ============================================================
+        let nearbyNotificationTimer = null;
+        async function pollNearbyUpdates() {
+            if (!navigator.onLine || localStorage.getItem('gf-nearby-alerts') !== 'true' || !('Notification' in window) || Notification.permission !== 'granted') return;
+            try {
+                const radius = Number(localStorage.getItem('gf-alert-radius') || currentRadius || 2000);
+                const params = new URLSearchParams({ lat: currentCenter.lat, lng: currentCenter.lng, radio: radius });
+                const response = await fetch(`${API_BASE}/mapa/puntos?${params}`);
+                if (!response.ok) return;
+                const points = await response.json();
+                if (!Array.isArray(points)) return;
+                const key = 'geofastpe_nearby_seen_v1';
+                let seen = [];
+                try { seen = JSON.parse(localStorage.getItem(key) || '[]'); } catch {}
+                const ids = points.map(p => `${p.kind || p.type || 'P'}:${p.id ?? p.uuid ?? p.title}`);
+                if (!seen.length) { localStorage.setItem(key, JSON.stringify(ids)); return; }
+                const seenSet = new Set(seen);
+                const fresh = points.filter(p => !seenSet.has(`${p.kind || p.type || 'P'}:${p.id ?? p.uuid ?? p.title}`));
+                fresh.slice(0, 4).forEach(p => {
+                    const title = p.title || p.name || 'Nueva publicación cercana';
+                    const type = p.kind || p.type || p.category || 'Novedad';
+                    const notification = new Notification(`GeoFastPe · ${type}`, { body: `${title} · Se registró cerca de tu zona`, tag: `gf-${p.id ?? title}`, icon: '/favicon.ico' });
+                    notification.onclick = () => { window.focus(); if (Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng))) map.flyTo({ center: [Number(p.lng), Number(p.lat)], zoom: 16 }); notification.close(); };
+                });
+                localStorage.setItem(key, JSON.stringify([...seen, ...ids].slice(-1500)));
+            } catch (error) { console.debug('Notificaciones cercanas:', error); }
+        }
+        function startNearbyNotifications() {
+            if (nearbyNotificationTimer) clearInterval(nearbyNotificationTimer);
+            pollNearbyUpdates();
+            nearbyNotificationTimer = setInterval(pollNearbyUpdates, 60000);
+        }
+        startNearbyNotifications();
+        window.addEventListener('storage', event => { if (event.key === 'gf-nearby-alerts' || event.key === 'gf-alert-radius') pollNearbyUpdates(); });
+
+        window.addEventListener('online', () => { updateConnectivityBadge(); toast('Conexión restaurada · sincronizando'); updateServices(); autoLoadWeather(); });
         window.addEventListener('offline', () => { updateConnectivityBadge(); toast('Sin conexión'); });
 
         document.getElementById('btn-emergency')?.addEventListener('click', () => {
@@ -1231,14 +1762,123 @@ function makePointMarker(point) {
             addRadiusCircle(); updateServices();
         });
 
+        const assistantMarkers = [];
+        const assistantResults = [];
+        function clearAssistantMarkers() {
+            assistantMarkers.splice(0).forEach(marker => marker.remove());
+            assistantResults.length = 0;
+        }
+        async function findNearby(options = {}) {
+            const opts = options && typeof options === 'object' ? options : {};
+            const query = String(opts.placesQuery || opts.query || '').trim();
+            const termList = (Array.isArray(opts.terms) ? opts.terms : []).map(value => normalizeLabel(value)).filter(Boolean);
+            const normalize = value => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const matchesTerms = p => {
+                if (!termList.length) return true;
+                const text = normalize(`${p.title || ''} ${p.name || ''} ${p.category || ''} ${p.type || ''} ${p.description || ''} ${p.location || ''} ${p.address || ''}`);
+                return termList.some(term => text.includes(normalize(term)));
+            };
+            const radius = currentRadius;
+            const items = [];
+
+            if (navigator.onLine) {
+                try {
+                    const params = new URLSearchParams({ lat: currentCenter.lat, lng: currentCenter.lng, radio: radius });
+                    const response = await fetch(`${API_BASE}/mapa/puntos?${params}`);
+                    if (response.ok) {
+                        const fresh = await response.json();
+                        if (Array.isArray(fresh)) {
+                            writeMapCache(fresh);
+                            fresh.filter(matchesTerms).forEach(p => {
+                                const lat = Number(p.lat), lng = Number(p.lng ?? p.lon);
+                                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                                const distance = distanceBetween(currentCenter, { lat, lng });
+                                if (distance > radius) return;
+                                items.push({ name: p.title || p.name || 'Publicación', address: p.address || p.location || '', lat, lng, distance, kind: 'Publicación', point: p });
+                            });
+                        }
+                    }
+                } catch {}
+            }
+
+            if (navigator.onLine && query) {
+                try {
+                    const dLat = radius / 110574;
+                    const dLng = radius / (111320 * Math.cos(currentCenter.lat * Math.PI / 180));
+                    const viewbox = [currentCenter.lng - dLng, currentCenter.lat + dLat, currentCenter.lng + dLng, currentCenter.lat - dLat].join(',');
+                    const params = new URLSearchParams({ format: 'jsonv2', limit: '20', countrycodes: 'pe', viewbox, bounded: '1', q: query });
+                    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, { headers: { Accept: 'application/json' } });
+                    if (response.ok) {
+                        const found = await response.json();
+                        (Array.isArray(found) ? found : []).forEach(place => {
+                            const lat = Number(place.lat), lng = Number(place.lon);
+                            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                            const distance = distanceBetween(currentCenter, { lat, lng });
+                            if (distance > radius) return;
+                            const full = place.display_name || query;
+                            items.push({ name: String(place.name || full).split(',')[0], address: full, lat, lng, distance, kind: 'Lugar' });
+                        });
+                    }
+                } catch {}
+            }
+
+            items.sort((a, b) => a.distance - b.distance);
+            const top = items.slice(0, 15);
+            clearAssistantMarkers();
+            top.forEach(item => {
+                const el = document.createElement('div');
+                el.innerHTML = pinSVG(item.kind === 'Publicación' ? '#7c3aed' : '#0ea5e9');
+                el.style.display = 'block';
+                const popup = item.point
+                    ? makePointPopup(item.point)
+                    : new maplibregl.Popup({ offset: 12 }).setHTML(`<div><b>${escapeHtml(item.name)}</b><br><small>${escapeHtml(item.address)}</small></div>`);
+                assistantMarkers.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([item.lng, item.lat]).setPopup(popup).addTo(map));
+                assistantResults.push(item);
+            });
+            if (top.length) {
+                const bounds = new maplibregl.LngLatBounds();
+                top.forEach(item => bounds.extend([item.lng, item.lat]));
+                map.fitBounds(bounds, { padding: 70, maxZoom: 16 });
+            }
+            return { radius, items: top.map(({ point, ...rest }) => rest) };
+        }
+        function focusAssistantPoint(lat, lng) {
+            const index = assistantResults.findIndex(item => Math.abs(item.lat - lat) < 1e-7 && Math.abs(item.lng - lng) < 1e-7);
+            const marker = assistantMarkers[index];
+            if (!marker) return false;
+            map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 16), essential: true });
+            if (!marker.getPopup()?.isOpen()) marker.togglePopup();
+            return true;
+        }
+
         window.GeoFastPe = {
+            __initialized: true,
+            __version: 'location-3',
             setCategory(category) { selectedServiceCategory = category; updateServices(); },
-            setExternalPoints(points) { externalPoints = Array.isArray(points) ? points : []; updateServices(); },
-            refreshPoints() { updateServices(); },
-            setRadius(value) { currentRadius = value; addRadiusCircle(); updateServices(); },
+            setRadius(value) { currentRadius = Math.max(250, Math.min(50000, Number(value) || 1000)); addRadiusCircle(); updateServices(); return currentRadius; },
+            setLayer(layer) { const btn = document.querySelector(`.layer-btn[data-layer="${layer}"]`); if (btn) btn.click(); },
+            setRouteMode(mode) { if (!ROUTE_URLS[mode]) return false; currentRouteMode = mode; document.querySelectorAll('.route-mode').forEach(b => b.classList.toggle('active', b.dataset.mode === mode)); if (lastRouteDestination) recalculateLastRoute(); return true; },
+            search(query, options = {}) { const input = document.getElementById('search-input'); if (!input) return; const value = Array.isArray(query) ? query.filter(Boolean).join(' ') : (query || ''); input.value = value; return buscarLugar(options); },
+            findNearby(options) { return findNearby(options); },
+            clearAssistantMarkers() { clearAssistantMarkers(); },
+            focusAssistantPoint(lat, lng) { return focusAssistantPoint(lat, lng); },
+            routeTo(query) { return routeToPlace(query); },
+            routeToPublication(query) { return routeToPublication(query); },
+            routeToCoordinates(lat, lng, label) { return routeToCoordinates(lat, lng, label); },
+            locateMe(options) { return locateMe(options); },
+            isFollowingUser() { return followUser; },
             getMap() { return map; },
-            getState() { return { radius: currentRadius, city: currentCityName, category: selectedServiceCategory }; }
+            getState() { return { radius: currentRadius, city: currentCityName, category: selectedServiceCategory, center: { ...currentCenter }, routeMode: currentRouteMode, userLocation: userLocation ? { ...userLocation } : null, lastGeoError }; }
         };
-        window.addEventListener('resize', () => map.invalidateSize());
+        const appShell = document.querySelector('.geofastpe-app');
+        const sidebar = document.querySelector('.gf-sidebar');
+        const refreshMapLayout = () => { map.resize(); map.triggerRepaint(); };
+        if (sidebar && appShell) {
+            const syncSidebar = () => appShell.classList.toggle('gf-sidebar-collapsed', sidebar.classList.contains('collapsed'));
+            syncSidebar();
+            new MutationObserver(() => { syncSidebar(); setTimeout(refreshMapLayout, 280); }).observe(sidebar, { attributes: true, attributeFilter: ['class'] });
+            if (window.ResizeObserver) new ResizeObserver(refreshMapLayout).observe(sidebar);
+        }
+        window.addEventListener('resize', refreshMapLayout);
     
 }

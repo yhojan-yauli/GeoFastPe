@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { usePreferences } from '../../preferences/PreferencesContext.jsx';
 
 // Vista LayerSwitcherView; conserva los IDs y el marcado que utiliza el motor original.
 const markup = `<div id="layer-switcher">
@@ -24,6 +25,34 @@ const markup = `<div id="layer-switcher">
         </button>
     </div>`;
 
+const LABELS = {
+  light: 'Claro',
+  dark: 'Oscuro',
+  transport: 'Transporte',
+  satellite: 'Satélite HD',
+  relief: 'Relieve 3D'
+};
+
+// Actualiza solo el nodo de texto para no perder los listeners del motor.
+const updateLabel = (button, label) => {
+  for (let index = button.childNodes.length - 1; index >= 0; index -= 1) {
+    const node = button.childNodes[index];
+    if (node.nodeType === Node.TEXT_NODE) {
+      node.nodeValue = `\n            ${label}\n        `;
+      return;
+    }
+  }
+};
+
 export default function LayerSwitcherView() {
+  const { tr } = usePreferences();
+
+  useEffect(() => {
+    document.querySelectorAll('#layer-switcher .layer-btn').forEach((button) => {
+      const label = LABELS[button.dataset.layer];
+      if (label) updateLabel(button, tr(label));
+    });
+  }, [tr]);
+
   return <div className="view-slot" dangerouslySetInnerHTML={{ __html: markup }} />;
 }

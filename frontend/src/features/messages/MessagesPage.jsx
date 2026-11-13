@@ -1,662 +1,124 @@
-
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  MessageCircleMore,
-  Search,
-  SquarePen,
-  Users,
-  Wrench,
-  CalendarDays,
-  ShoppingCart,
-  Send,
-  X
-} from 'lucide-react';
-
-import { chatApi } from '../../api/index.js';
+import { MessageCircleMore, Search, SquarePen, Users, Wrench, CalendarDays, ShoppingCart, Send, X, UserPlus, Volume2, Languages, Mic, MicOff, Star } from 'lucide-react';
+import { chatApi, ratingsApi } from '../../api/index.js';
+import { usePreferences } from '../../preferences/PreferencesContext.jsx';
 import './Messages.css';
 
-const filters = [
-  'Todos',
-  'Vecinos',
-  'Servicios',
-  'Eventos',
-  'Grupos',
-  'Ventas'
-];
+const filters = ['Todos', 'Vecinos', 'Servicios', 'Eventos', 'Grupos', 'Ventas'];
+const iconFor = (category) => category === 'Servicios' ? Wrench : category === 'Eventos' ? CalendarDays : category === 'Ventas' ? ShoppingCart : Users;
+const formatTime = (value) => { if (!value) return ''; const d = new Date(value); return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); };
+const speak = (text, lang) => { if (!('speechSynthesis' in window) || !text) return; window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = lang || document.documentElement.lang || 'es-PE'; window.speechSynthesis.speak(u); };
 
-const iconFor = (category) => {
-  if (category === 'Servicios') return Wrench;
-  if (category === 'Eventos') return CalendarDays;
-  if (category === 'Ventas') return ShoppingCart;
-  return Users;
-};
+export default function MessagesPage({ isAuthenticated = false, initialConversationId = null, initialPublication = null, onBack }) {
+  const { language, t } = usePreferences();
+  const [conversations, setConversations] = useState([]), [publicGroups, setPublicGroups] = useState([]), [selectedId, setSelectedId] = useState(initialConversationId), [messages, setMessages] = useState([]), [filter, setFilter] = useState('Todos'), [search, setSearch] = useState(''), [draft, setDraft] = useState(''), [notice, setNotice] = useState(''), [showNew, setShowNew] = useState(false), [newTitle, setNewTitle] = useState(''), [newCategory, setNewCategory] = useState('Vecinos'), [sending, setSending] = useState(false), [recording, setRecording] = useState(false), [translation, setTranslation] = useState({}), [ratingTarget, setRatingTarget] = useState(null), [rating, setRating] = useState(5), [ratingComment, setRatingComment] = useState('');
+  const recognitionRef = useRef(null);
+  const autoJoinedGeneralRef = useRef(false);
 
-const formatTime = (value) => {
-  if (!value) return '';
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return '';
-
-  return date.toLocaleTimeString('es-PE', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
-
-const getPublicationAuthor = (publication) => {
-  if (!publication) return null;
-
-  const author =
-    publication.author ||
-    publication.publisher ||
-    publication.user ||
-    publication.usuario ||
-    publication.creador ||
-    {};
-
-  const id =
-    publication.authorId ??
-    publication.publisherId ??
-    publication.userId ??
-    publication.usuarioId ??
-    publication.createdBy ??
-    author.id ??
-    null;
-
-  const name =
-    publication.authorName ||
-    publication.publisherName ||
-    publication.userName ||
-    publication.nombreUsuario ||
-    publication.nombrePublicador ||
-    author.name ||
-    author.nombre ||
-    author.fullName ||
-    null;
-
-  return {
-    id,
-    name,
-    publicationId: publication.id ?? null,
-    publicationTitle: publication.title || 'Publicación',
-    publicationKind: publication.kind || ''
-  };
-};
-
-const getPublicationCategory = (publication) => {
-  const kind = String(publication?.kind || '').toUpperCase();
-
-  if (kind === 'SERVICIO') return 'Servicios';
-  if (kind === 'VENTA') return 'Ventas';
-  if (kind === 'EVENTO') return 'Eventos';
-
-  return 'Vecinos';
-};
-
-const matchesAuthor = (conversation, authorId) => {
-  if (authorId == null) return false;
-
-  const candidates = [
-    conversation.otherUserId,
-    conversation.recipientId,
-    conversation.participantId,
-    conversation.authorId,
-    conversation.publisherId,
-    conversation.userId,
-    ...(Array.isArray(conversation.participants)
-      ? conversation.participants.map(
-          (person) =>
-            typeof person === 'object'
-              ? person.id ?? person.userId
-              : person
-        )
-      : [])
-  ];
-
-  return candidates.some(
-    (candidate) =>
-      candidate != null &&
-      String(candidate) === String(authorId)
-  );
-};
-
-export default function MessagesPage({
-  isAuthenticated = false,
-  initialConversationId = null,
-  initialPublication = null,
-  onBack
-}) {
-  const [conversations, setConversations] = useState([]);
-  const [selectedId, setSelectedId] = useState(
-    initialConversationId
-  );
-  const [messages, setMessages] = useState([]);
-  const [filter, setFilter] = useState('Todos');
-  const [search, setSearch] = useState('');
-  const [draft, setDraft] = useState('');
-  const [notice, setNotice] = useState('');
-  const [showNew, setShowNew] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newCategory, setNewCategory] = useState('Vecinos');
-  const [sending, setSending] = useState(false);
-  const [openingPublication, setOpeningPublication] = useState(false);
-
-  const processedPublication = useRef(null);
-
-  const loadConversations = async (category = filter) => {
+  const load = async () => {
     try {
-      const data = await chatApi.listar(
-        category === 'Todos'
-          ? {}
-          : { categoria: category }
-      );
-
-      const list = Array.isArray(data) ? data : [];
-
-      setConversations(list);
-      return list;
-    } catch (error) {
-      setNotice(error.message || 'No se pudieron cargar los chats.');
-      return [];
-    }
+      const stamp = Date.now();
+      let [mine, groups] = await Promise.all([
+        chatApi.listar({ _refresh: stamp }),
+        chatApi.publicas({ _refresh: stamp })
+      ]);
+      mine = Array.isArray(mine) ? mine : [];
+      groups = Array.isArray(groups) ? groups : [];
+      const general = groups.find(c => c.publicGroup && /vecinos/i.test(c.category || c.title || ''));
+      if (general && !autoJoinedGeneralRef.current) {
+        autoJoinedGeneralRef.current = true;
+        if (!mine.some(c => String(c.id) === String(general.id))) {
+          try {
+            await chatApi.unirse(general.id);
+            mine = await chatApi.listar({ _refresh: Date.now() });
+          } catch (joinError) { console.warn('No se pudo unir al canal general:', joinError); }
+        }
+      }
+      setConversations(Array.isArray(mine) ? mine : []);
+      setPublicGroups(groups);
+    } catch (e) { setNotice(e.message || t('messages.error')); }
   };
-
   useEffect(() => {
     if (!isAuthenticated) return;
-
-    loadConversations();
-  }, [isAuthenticated, filter]);
-
-  // Actualiza la bandeja para reflejar mensajes que llegan desde otros miembros.
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const timer = window.setInterval(() => loadConversations(), 8000);
-    return () => window.clearInterval(timer);
-  }, [isAuthenticated, filter]);
+    load();
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (initialConversationId) {
-      setFilter('Todos');
-      setSearch('');
-      setSelectedId(initialConversationId);
-    }
-  }, [initialConversationId]);
-
+    if (selectedId) return;
+    const general = [...conversations, ...publicGroups].find(c => /vecinos/i.test(c.category || c.title || ''));
+    if (general) setSelectedId(general.id);
+    else if (conversations.length) setSelectedId(conversations[0].id);
+    else if (publicGroups.length) setSelectedId(publicGroups[0].id);
+  }, [publicGroups, conversations, selectedId]);
+  useEffect(() => { if (initialConversationId) setSelectedId(initialConversationId); }, [initialConversationId]);
   useEffect(() => {
-    if (!isAuthenticated || !initialPublication) return;
-
-    const author = getPublicationAuthor(initialPublication);
-
-    const publicationKey = [
-      author?.publicationKind,
-      author?.publicationId,
-      author?.id
-    ].join(':');
-
-    if (processedPublication.current === publicationKey) {
-      return;
-    }
-
-    processedPublication.current = publicationKey;
-
+    if (!isAuthenticated || !selectedId) return;
     let cancelled = false;
-
-    const openPublicationConversation = async () => {
-      setOpeningPublication(true);
-      setNotice('');
-      setFilter('Todos');
-      setSearch('');
-
+    const refreshThread = async () => {
       try {
-        if (!author?.id) {
-          setNotice(
-            'Esta publicación no contiene el ID del publicador. ' +
-            'Es necesario que el backend incluya ese dato para ' +
-            'iniciar una conversación privada.'
-          );
-          return;
-        }
-
-        const data = await chatApi.listar({});
-        const list = Array.isArray(data) ? data : [];
-
-        if (cancelled) return;
-
-        setConversations(list);
-
-        const existing = list.find((conversation) =>
-          matchesAuthor(conversation, author.id)
-        );
-
-        if (existing) {
-          setSelectedId(existing.id);
-          return;
-        }
-
-        // Se conserva el contrato actual de chatApi.crear.
-        // El backend debe aceptar recipientId para asociar
-        // correctamente el chat con el publicador.
-        const created = await chatApi.crear({
-          title: author.name || 'Conversación privada',
-          subtitle: `Publicación: ${author.publicationTitle}`,
-          category: getPublicationCategory(initialPublication),
-          recipientId: author.id
-        });
-
-        if (cancelled) return;
-
-        if (!created?.id) {
-          throw new Error(
-            'La API no devolvió el ID de la conversación.'
-          );
-        }
-
-        setConversations((previous) => {
-          const exists = previous.some(
-            (conversation) => conversation.id === created.id
-          );
-
-          return exists ? previous : [created, ...previous];
-        });
-
-        setSelectedId(created.id);
-
-        await loadConversations('Todos');
-      } catch (error) {
-        if (!cancelled) {
-          setNotice(
-            error.message ||
-            'No fue posible iniciar la conversación.'
-          );
-        }
-      } finally {
-        if (!cancelled) setOpeningPublication(false);
-      }
-    };
-
-    openPublicationConversation();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, initialPublication]);
-
-  useEffect(() => {
-    if (!isAuthenticated || !selectedId) {
-      setMessages([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    const loadMessages = async () => {
-      try {
-        await chatApi.marcarLeido(selectedId);
-
+        const joined = conversations.some(c => String(c.id) === String(selectedId));
+        if (joined) await chatApi.marcarLeido(selectedId);
         const data = await chatApi.mensajes(selectedId);
-
-        if (!cancelled) {
-          setMessages(Array.isArray(data) ? data : []);
-        }
-
-        await loadConversations('Todos');
-      } catch (error) {
-        if (!cancelled) {
-          setNotice(error.message || 'Error al cargar mensajes.');
-        }
+        if (!cancelled) setMessages(Array.isArray(data) ? data : []);
+        await load();
+      } catch (e) {
+        if (!cancelled) setNotice(e.message || t('messages.error'));
       }
     };
-
-    loadMessages();
-    const timer = window.setInterval(loadMessages, 4000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
+    refreshThread();
+    const timer = window.setInterval(refreshThread, 3500);
+    return () => { cancelled = true; window.clearInterval(timer); };
   }, [selectedId, isAuthenticated]);
 
-  const visible = useMemo(
-    () =>
-      conversations.filter((conversation) =>
-        `${conversation.title || ''} ${conversation.subtitle || ''}`
-          .toLowerCase()
-          .includes(search.toLowerCase())
-      ),
-    [conversations, search]
-  );
+  const visible = useMemo(() => conversations.filter(c => !c.publicGroup && (filter === 'Todos' || c.category === filter) && `${c.title||''} ${c.subtitle||''} ${c.ownerUsername||''}`.toLowerCase().includes(search.toLowerCase())), [conversations, filter, search]);
+  const visibleGroups = useMemo(() => publicGroups.filter(c => (filter === 'Todos' || c.category === filter || (filter === 'Grupos' && c.publicGroup)) && `${c.title||''} ${c.subtitle||''} ${c.ownerUsername||''}`.toLowerCase().includes(search.toLowerCase())), [publicGroups, filter, search]);
+  const selected = [...conversations, ...publicGroups].find(c => String(c.id) === String(selectedId));
+  const selectedJoined = selected ? conversations.some(c => String(c.id) === String(selected.id)) : false;
 
-  const selected = conversations.find(
-    (conversation) =>
-      String(conversation.id) === String(selectedId)
-  );
-
-  const send = async (event) => {
-    event.preventDefault();
-
-    const text = draft.trim();
-
-    if (!text || !selectedId || sending) return;
-
-    setSending(true);
-
-    try {
-      const newMessage = await chatApi.enviar(selectedId, text);
-
-      setMessages((previous) => [...previous, newMessage]);
-      setDraft('');
-
-      await loadConversations('Todos');
-    } catch (error) {
-      setNotice(error.message || 'No se pudo enviar el mensaje.');
-    } finally {
-      setSending(false);
+  useEffect(() => {
+    const candidates = [...visibleGroups, ...visible];
+    if (candidates.length && !candidates.some(c => String(c.id) === String(selectedId))) {
+      setSelectedId(candidates[0].id);
     }
+  }, [filter, search, publicGroups.length, conversations.length]);
+
+  const startPublication = async () => {
+    const a = initialPublication?.author || initialPublication?.publisher || initialPublication?.user || {};
+    const id = initialPublication?.authorId ?? initialPublication?.publisherId ?? initialPublication?.userId ?? a.id;
+    if (!id) return setNotice(t('messages.authorMissing'));
+    try { const created = await chatApi.crear({ title: a.name || initialPublication.authorName || 'Conversación', subtitle: `Publicación: ${initialPublication.title || 'Publicación'}`, category: 'Vecinos', recipientId: id }); setSelectedId(created.id); await load(); } catch(e) { setNotice(e.message || t('messages.error')); }
   };
+  useEffect(() => { if (isAuthenticated && initialPublication) startPublication(); }, [isAuthenticated, initialPublication]);
 
-  const createConversation = async (event) => {
-    event.preventDefault();
+  const send = async (e) => { e.preventDefault(); const text = draft.trim(); if (!text || !selectedId || sending) return; setSending(true); try { const m = await chatApi.enviar(selectedId, text); setMessages(x => [...x, m]); setDraft(''); await load(); } catch(e) { setNotice(e.message || t('messages.error')); } finally { setSending(false); } };
+  const createGroup = async (e) => { e.preventDefault(); if (!newTitle.trim()) return; try { const c = await chatApi.crearPublico({ title:newTitle.trim(), subtitle:`Grupo comunitario · ${newCategory}`, category:newCategory }); setShowNew(false); setNewTitle(''); await load(); setSelectedId(c.id); } catch(e) { setNotice(e.message || t('messages.error')); } };
+  const join = async (id) => { try { const c = await chatApi.unirse(id); setSelectedId(c.id); await load(); } catch(e) { setNotice(e.message || t('messages.error')); } };
+  const translate = async (id, text) => { try { const target = language || 'es'; const source = target === 'es' ? 'en' : 'es'; const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${target}`); const j = await r.json(); setTranslation(x=>({...x,[id]: j?.responseData?.translatedText || text})); } catch { setTranslation(x=>({...x,[id]: text})); } };
+  const toggleVoice = () => { const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) return setNotice(t('messages.voiceUnsupported')); if (recording) { recognitionRef.current?.stop(); setRecording(false); return; } const r = new SR(); recognitionRef.current=r; r.lang = language === 'en' ? 'en-US' : language === 'pt' ? 'pt-BR' : 'es-PE'; r.interimResults=false; r.onresult=e=>setDraft(x=>`${x} ${e.results[0][0].transcript}`.trim()); r.onend=()=>setRecording(false); r.onerror=()=>{setRecording(false);setNotice(t('messages.voiceError'));}; r.start(); setRecording(true); };
+  const submitRating = async(e)=>{e.preventDefault(); if(!ratingTarget) return; try {await ratingsApi.crear({reviewedId:ratingTarget.ownerId, serviceId:ratingTarget.serviceId||null, rating, comment:ratingComment}); setRatingTarget(null); setRatingComment(''); setNotice(t('messages.reviewSaved'));}catch(err){setNotice(err.message||t('messages.error'));}};
 
-    if (!newTitle.trim()) return;
-
-    try {
-      const created = await chatApi.crear({
-        title: newTitle.trim(),
-        subtitle: null,
-        category: newCategory
-      });
-
-      setShowNew(false);
-      setNewTitle('');
-      setFilter('Todos');
-      setSearch('');
-
-      await loadConversations('Todos');
-
-      setSelectedId(created.id);
-    } catch (error) {
-      setNotice(
-        error.message || 'No se pudo crear la conversación.'
-      );
-    }
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="gf-msg-locked">
-        <MessageCircleMore size={40} />
-        <h2>Mensajes privados</h2>
-        <p>Inicia sesión para acceder a tus conversaciones.</p>
-
-        {onBack && (
-          <button onClick={onBack}>Volver al mapa</button>
-        )}
+  if (!isAuthenticated) return <div className="gf-msg-locked"><MessageCircleMore size={40}/><h2>{t('messages.title')}</h2><p>{t('messages.login')}</p>{onBack&&<button onClick={onBack}>{t('common.back')}</button>}</div>;
+  return <section className="gf-msg-page">
+    <header className="gf-msg-banner"><MessageCircleMore size={38}/><div><h1>{t('messages.title')}</h1><p>{t('messages.subtitle')}</p></div></header>
+    <div className="gf-msg-shell">
+      <aside className="gf-msg-sidebar">
+        <div className="gf-msg-searchrow"><label className="gf-msg-search"><Search size={17}/><input placeholder={t('messages.search')} value={search} onChange={e=>setSearch(e.target.value)}/></label><button className="gf-msg-new" title={t('messages.newGroup')} onClick={()=>setShowNew(true)}><SquarePen size={19}/></button></div>
+        <div className="gf-msg-filters">{filters.map(x=><button key={x} className={filter===x?'active':''} onClick={()=>setFilter(x)}>{x}</button>)}</div>
+        <div className="gf-msg-group-label"><Users size={15}/> {t('messages.publicGroups')}</div>
+        <div className="gf-msg-conversations">
+          {visibleGroups.length===0 && <p className="gf-msg-empty">No hay canales todavía. Usa "Nuevo grupo" para crear uno.</p>}{visibleGroups.map(c=>{const I=iconFor(c.category); const joined=conversations.some(x=>String(x.id)===String(c.id)); return <div className={`gf-msg-chatitem ${String(c.id)===String(selectedId)?'selected':''}`} key={`g-${c.id}`}><button className="gf-msg-chatopen" onClick={()=>setSelectedId(c.id)}><span className="gf-msg-avatar"><I size={23}/></span><span className="gf-msg-chatcopy"><strong>{c.title}</strong><small>@{c.ownerUsername || 'usuario'} · {c.memberCount || 0} participantes · {c.preview}</small></span></button>{c.unread>0&&<b className="gf-msg-group-unread">{c.unread}</b>}{!joined&&<button className="gf-msg-join" title={t('messages.join')} onClick={()=>join(c.id)}><UserPlus size={17}/></button>}</div>})}
+          <div className="gf-msg-group-label"><MessageCircleMore size={15}/> {t('messages.myConversations')}</div>
+          {visible.length===0 && visibleGroups.length===0 ? <p className="gf-msg-empty">{t('messages.empty')}</p> : visible.map(c=>{const I=iconFor(c.category); return <button key={c.id} className={`gf-msg-chatitem ${String(c.id)===String(selectedId)?'selected':''}`} onClick={()=>setSelectedId(c.id)}><span className="gf-msg-avatar"><I size={23}/></span><span className="gf-msg-chatcopy"><strong>{c.title}</strong><small>{c.subtitle||c.preview}</small></span><span className="gf-msg-chatmeta"><small>{formatTime(c.time)}</small>{c.unread>0&&<b>{c.unread}</b>}</span></button>})}
+        </div>
+      </aside>
+      <div className="gf-msg-main">
+        {selected ? <><div className="gf-msg-chathead"><span className="gf-msg-avatar"><Users size={25}/></span><div><h2>{selected.title}</h2><p>{selected.publicGroup ? `@${selected.ownerUsername || 'usuario'} · ${selected.category}` : selected.subtitle || selected.category}</p></div><div className="gf-msg-actions">{selected.publicGroup && !selectedJoined && <button className="gf-msg-join-head" onClick={()=>join(selected.id)} title={t('messages.join')}><UserPlus size={17}/>{t('messages.join')}</button>}{selected.ownerId&&<button onClick={()=>setRatingTarget({ownerId:selected.ownerId,serviceId:selected.serviceId})} title={t('messages.review')}><Star size={17}/></button>}</div></div>
+          <div className="gf-msg-thread">{messages.length===0&&<p className="gf-msg-empty">{t('messages.first')}</p>}{messages.map(m=><article key={m.id} className={`gf-msg-bubble ${m.mine?'mine':''}`}>{!m.mine&&<strong>{m.authorUsername ? `@${m.authorUsername}` : m.author}</strong>}<p>{translation[m.id]||m.text}</p><div className="gf-msg-bubble-actions"><time>{formatTime(m.createdAt)}</time><button onClick={()=>speak(translation[m.id]||m.text, language==='en'?'en-US':language==='pt'?'pt-BR':'es-PE')} title={t('messages.speak')}><Volume2 size={14}/></button><button onClick={()=>translate(m.id,m.text)} title={t('messages.translate')}><Languages size={14}/></button></div></article>)}</div>
+          {notice&&<div className="gf-msg-notice">{notice}<button onClick={()=>setNotice('')}><X size={15}/></button></div>}
+          <form className="gf-msg-compose" onSubmit={send}>{selected.publicGroup && !selectedJoined && <div className="gf-msg-readonly">{t('messages.joinToWrite')}</div>}<button type="button" className={recording?'recording':''} onClick={toggleVoice} disabled={selected.publicGroup && !selectedJoined} title={recording?t('messages.stopVoice'):t('messages.voice')}><>{recording?<MicOff size={19}/>:<Mic size={19}/>}</></button><input aria-label={t('messages.write')} placeholder={t('messages.write')} value={draft} onChange={e=>setDraft(e.target.value)} maxLength={2000} disabled={selected.publicGroup && !selectedJoined}/><button className="gf-msg-send" type="submit" disabled={!draft.trim()||sending||(selected.publicGroup&&!selectedJoined)}><Send size={19}/></button></form></> : <div className="gf-msg-empty">{t('messages.select')}</div>}
       </div>
-    );
-  }
-
-  return (
-    <section className="gf-msg-page">
-      <header className="gf-msg-banner">
-        <MessageCircleMore size={38} />
-        <div>
-          <h1>Mensajes</h1>
-          <p>
-            Comunícate con vecinos, voluntarios y
-            organizadores de tu comunidad.
-          </p>
-        </div>
-      </header>
-
-      <div className="gf-msg-shell">
-        <aside className="gf-msg-sidebar">
-          <div className="gf-msg-searchrow">
-            <label className="gf-msg-search">
-              <Search size={17} />
-              <input
-                placeholder="Buscar conversación..."
-                value={search}
-                onChange={(event) =>
-                  setSearch(event.target.value)
-                }
-              />
-            </label>
-
-            <button
-              className="gf-msg-new"
-              title="Nueva conversación"
-              aria-label="Nueva conversación"
-              onClick={() => setShowNew(true)}
-            >
-              <SquarePen size={19} />
-            </button>
-          </div>
-
-          <div className="gf-msg-filters">
-            {filters.map((item) => (
-              <button
-                key={item}
-                className={filter === item ? 'active' : ''}
-                onClick={() => setFilter(item)}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-
-          <div className="gf-msg-conversations">
-            {visible.length === 0 ? (
-              <p className="gf-msg-empty">
-                No tienes conversaciones todavía.
-              </p>
-            ) : (
-              visible.map((conversation) => {
-                const Icon = iconFor(conversation.category);
-
-                return (
-                  <button
-                    key={conversation.id}
-                    className={`gf-msg-chatitem ${
-                      String(conversation.id) === String(selectedId)
-                        ? 'selected'
-                        : ''
-                    }`}
-                    onClick={() =>
-                      setSelectedId(conversation.id)
-                    }
-                  >
-                    <span className="gf-msg-avatar">
-                      <Icon size={23} />
-                    </span>
-
-                    <span className="gf-msg-chatcopy">
-                      <strong>{conversation.title}</strong>
-                      <small>{conversation.preview}</small>
-                    </span>
-
-                    <span className="gf-msg-chatmeta">
-                      <small>
-                        {formatTime(conversation.time)}
-                      </small>
-
-                      {conversation.unread > 0 && (
-                        <b>{conversation.unread}</b>
-                      )}
-                    </span>
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </aside>
-
-        <div className="gf-msg-main">
-          {selected ? (
-            <>
-              <div className="gf-msg-chathead">
-                <span className="gf-msg-avatar">
-                  {(() => {
-                    const Icon = iconFor(selected.category);
-                    return <Icon size={25} />;
-                  })()}
-                </span>
-
-                <div>
-                  <h2>{selected.title}</h2>
-                  <p>
-                    {selected.subtitle || selected.category}
-                  </p>
-                </div>
-              </div>
-
-              <div className="gf-msg-thread">
-                {messages.length === 0 && (
-                  <p className="gf-msg-empty">
-                    Escribe el primer mensaje de esta conversación.
-                  </p>
-                )}
-
-                {messages.map((message) => (
-                  <article
-                    key={message.id}
-                    className={`gf-msg-bubble ${
-                      message.mine ? 'mine' : ''
-                    }`}
-                  >
-                    {!message.mine && (
-                      <strong>{message.author}</strong>
-                    )}
-
-                    <p>{message.text}</p>
-
-                    <time>
-                      {formatTime(message.createdAt)}
-                    </time>
-                  </article>
-                ))}
-              </div>
-
-              {notice && (
-                <div className="gf-msg-notice">
-                  {notice}
-
-                  <button
-                    onClick={() => setNotice('')}
-                    aria-label="Cerrar aviso"
-                  >
-                    <X size={15} />
-                  </button>
-                </div>
-              )}
-
-              <form
-                className="gf-msg-compose"
-                onSubmit={send}
-              >
-                <input
-                  aria-label="Escribe un mensaje"
-                  placeholder="Escribe un mensaje..."
-                  value={draft}
-                  onChange={(event) =>
-                    setDraft(event.target.value)
-                  }
-                  maxLength={2000}
-                />
-
-                <button
-                  className="gf-msg-send"
-                  type="submit"
-                  disabled={!draft.trim() || sending}
-                  title="Enviar mensaje"
-                >
-                  <Send size={19} />
-                </button>
-              </form>
-            </>
-          ) : (
-            <div className="gf-msg-empty">
-              {openingPublication
-                ? 'Buscando conversación con el publicador...'
-                : 'Selecciona una conversación o crea una nueva.'}
-            </div>
-          )}
-
-          {!selected && notice && (
-            <div className="gf-msg-notice">
-              {notice}
-              <button
-                onClick={() => setNotice('')}
-                aria-label="Cerrar aviso"
-              >
-                <X size={15} />
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {showNew && (
-        <div
-          className="gf-msg-modalshade"
-          role="presentation"
-          onClick={() => setShowNew(false)}
-        >
-          <form
-            className="gf-msg-modal"
-            onClick={(event) => event.stopPropagation()}
-            onSubmit={createConversation}
-          >
-            <h2>Nueva conversación</h2>
-
-            <label>
-              Nombre de la conversación
-              <input
-                autoFocus
-                value={newTitle}
-                onChange={(event) =>
-                  setNewTitle(event.target.value)
-                }
-                maxLength={80}
-                required
-                placeholder="Ej. Vecinos del barrio"
-              />
-            </label>
-
-            <label>
-              Categoría
-              <select
-                value={newCategory}
-                onChange={(event) =>
-                  setNewCategory(event.target.value)
-                }
-              >
-                {filters
-                  .filter((item) => item !== 'Todos')
-                  .map((item) => (
-                    <option key={item}>{item}</option>
-                  ))}
-              </select>
-            </label>
-
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowNew(false)}
-              >
-                Cancelar
-              </button>
-
-              <button
-                type="submit"
-                className="gf-msg-primary"
-              >
-                Crear conversación
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-    </section>
-  );
+    </div>
+    {showNew&&<div className="gf-msg-modalshade" onClick={()=>setShowNew(false)}><form className="gf-msg-modal" onClick={e=>e.stopPropagation()} onSubmit={createGroup}><h2>{t('messages.newGroup')}</h2><label>{t('messages.groupName')}<input autoFocus value={newTitle} onChange={e=>setNewTitle(e.target.value)} maxLength={80} required placeholder="Ej. Vecinos de Cayma"/></label><label>{t('messages.category')}<select value={newCategory} onChange={e=>setNewCategory(e.target.value)}>{filters.filter(x=>x!=='Todos').map(x=><option key={x}>{x}</option>)}</select></label><div className="gf-msg-modal-actions"><button type="button" onClick={()=>setShowNew(false)}>{t('common.cancel')}</button><button className="gf-msg-primary" type="submit">{t('messages.create')}</button></div></form></div>}
+    {ratingTarget&&<div className="gf-msg-modalshade" onClick={()=>setRatingTarget(null)}><form className="gf-msg-modal" onClick={e=>e.stopPropagation()} onSubmit={submitRating}><h2>{t('messages.review')}</h2><p>{t('messages.reviewHint')}</p><div className="gf-msg-stars">{[1,2,3,4,5].map(n=><button type="button" key={n} className={n<=rating?'on':''} onClick={()=>setRating(n)}><Star size={26} fill="currentColor"/></button>)}</div><textarea value={ratingComment} onChange={e=>setRatingComment(e.target.value)} maxLength={500} placeholder={t('messages.reviewPlaceholder')}/><div className="gf-msg-modal-actions"><button type="button" onClick={()=>setRatingTarget(null)}>{t('common.cancel')}</button><button className="gf-msg-primary">{t('messages.saveReview')}</button></div></form></div>}
+  </section>;
 }

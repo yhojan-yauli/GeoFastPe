@@ -302,3 +302,9 @@
     width: 100%;
   }
 }
+
+.publish-sale-location-row{grid-template-columns:repeat(3,minmax(0,1fr))}
+.publish-sale-location-summary{color:#5b4b7b;font-size:12px;line-height:1.5}
+.publish-sale-geo-error{color:#a52a2a;font-size:12px;line-height:1.45}
+.publish-sale-location-row select{min-width:0}
+@media(max-width:650px){.publish-sale-location-row{grid-template-columns:1fr}}

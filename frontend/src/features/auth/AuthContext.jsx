@@ -44,6 +44,11 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     tokenStorage.clear();
+    try {
+      Object.keys(localStorage)
+        .filter(key => key.startsWith('geofastpe_api_cache:'))
+        .forEach(key => localStorage.removeItem(key));
+    } catch { /* almacenamiento no disponible */ }
     setUser(null);
   };
 

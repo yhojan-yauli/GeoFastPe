@@ -1,9 +1,9 @@
 .gf-auth-overlay.login-required-overlay {
   position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
-  padding: 16px; overflow-y: auto; overflow-x: hidden; background: rgba(22, 16, 52, .32); backdrop-filter: blur(5px);
+  padding: 20px; overflow-y: auto; background: rgba(22, 16, 52, .32); backdrop-filter: blur(5px);
 }
 .gf-auth-card.login-required-card {
-  position: relative; width: min(100%, 448px); max-height: calc(100dvh - 32px); overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
+  position: relative; width: min(100%, 448px); max-height: calc(100dvh - 40px); overflow-y: auto;
   box-sizing: border-box; padding: 29px 36px 28px; margin: auto;
   background: #fff; border: 1px solid #e7e0fa; border-radius: 23px;
   box-shadow: 0 20px 55px rgba(39, 23, 92, .19); color: #1d173b; text-align: center;
@@ -41,8 +41,11 @@
 .gf-auth-demo small { display: block; margin-top: 4px; color: #a09aa9; font-size: 10px; line-height: 1.45; }
 @media (max-width: 480px) { .gf-auth-card.login-required-card { padding: 26px 22px 22px; border-radius: 19px; } .gf-auth-options { flex-wrap: wrap; } }
 
-.gf-auth-card.login-required-card::-webkit-scrollbar { display:none; }
-.gf-auth-card.login-required-card h1,.gf-auth-card.login-required-card h2,.gf-auth-card.login-required-card p,.gf-auth-card.login-required-card label,.gf-auth-card.login-required-card small { overflow-wrap:anywhere; word-break:normal; }
-.gf-auth-card.login-required-card input,.gf-auth-card.login-required-card button { max-width:100%; min-width:0; }
-.gf-auth-form.auth-form,.gf-auth-field { min-width:0; }
-@media (max-height:680px) { .gf-auth-card.login-required-card { padding:22px 28px 20px; } .gf-auth-brand { margin-bottom:14px; } .gf-auth-card .gf-auth-subtitle { margin-bottom:14px; } .gf-auth-footer { margin-top:14px; padding-top:12px; } }
+.gf-auth-checkbox{width:100%;display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:8px;box-sizing:border-box;white-space:normal}.gf-auth-checkbox input{width:17px;height:17px;margin:1px 0 0;position:relative;z-index:2}.gf-auth-terms{line-height:1.45;padding-right:2px}.gf-auth-card{overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}.gf-auth-form{min-width:0}.gf-auth-field{min-width:0}.gf-auth-field input{overflow:hidden;text-overflow:ellipsis}@media(max-height:700px){.gf-auth-card.login-required-card{padding-top:18px;padding-bottom:16px}.gf-auth-brand{margin-bottom:12px}.gf-auth-symbol{width:42px;height:42px;margin-bottom:5px}.gf-auth-card h2{font-size:21px}.gf-auth-card .gf-auth-subtitle{margin-bottom:12px}.gf-auth-form.auth-form{gap:8px}.gf-auth-checklist{padding:9px 12px;gap:3px}.gf-auth-footer{margin-top:10px;padding-top:10px}}
+
+.gf-auth-overlay.login-required-overlay{align-items:flex-start}
+.gf-auth-card.login-required-card{max-height:calc(100dvh - 32px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+.gf-auth-terms{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:start;white-space:normal;overflow-wrap:anywhere;word-break:normal}
+.gf-auth-terms input{grid-column:1;grid-row:1}
+.gf-auth-terms{line-height:1.5}
+@media(max-height:620px){.gf-auth-overlay.login-required-overlay{padding:8px}.gf-auth-card.login-required-card{max-height:calc(100dvh - 16px);padding-top:14px;padding-bottom:14px}}

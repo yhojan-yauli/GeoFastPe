@@ -1,17 +1,33 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
+import { PreferencesProvider } from './preferences/PreferencesContext.jsx';
 import { AuthProvider } from './features/auth/AuthContext.jsx';
 import './styles/global.css';
+import './styles/responsive.css';
 
-// El motor MapLibre administra listeners y controles imperativos; no debe
-// inicializarse dos veces en modo desarrollo mediante StrictMode.
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <AuthProvider><App /></AuthProvider>
+  <React.StrictMode>
+    <AuthProvider>
+      <PreferencesProvider>
+        <App />
+      </PreferencesProvider>
+    </AuthProvider>
+  </React.StrictMode>
 );
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(error => console.warn('No se pudo activar el modo offline:', error));
-  });
+  if (import.meta.env.PROD) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  } else {
+    // En desarrollo no se usa Service Worker: evita servir módulos o HTML obsoletos.
+    navigator.serviceWorker.getRegistrations()
+      .then(registrations => Promise.all(registrations.map(registration => registration.unregister())))
+      .catch(() => {});
+    if (window.caches?.keys) {
+      caches.keys()
+        .then(keys => Promise.all(keys.map(key => caches.delete(key))))
+        .catch(() => {});
+    }
+  }
 }

@@ -1,6 +1,7 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../features/auth/AuthContext.jsx';
+import { usePreferences } from '../../preferences/PreferencesContext.jsx';
 import { canAccessSection } from '../../features/auth/permissions.js';
 import './Sidebar.css';
 
@@ -62,7 +63,13 @@ export default function Sidebar({
   onRequireLogin
 }) {
   const { isAuthenticated } = useAuth();
+  const { t, tr } = usePreferences();
   const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    const app = document.querySelector('.geofastpe-app');
+    app?.classList.toggle('gf-sidebar-collapsed', collapsed);
+    window.dispatchEvent(new Event('resize'));
+  }, [collapsed]);
 
   // ==========================================
   // CONTROL DE NAVEGACIÓN
@@ -108,8 +115,8 @@ export default function Sidebar({
   // ==========================================
 
   return (
-    <aside className={`left-sidebar gf-sidebar ${collapsed ? 'gf-sidebar-collapsed' : ''}`}>
-      <button className="gf-sidebar-toggle" type="button" onClick={() => setCollapsed(value => !value)} aria-label={collapsed ? "Expandir menú" : "Contraer menú"} title={collapsed ? "Expandir menú" : "Contraer menú"}><span>{collapsed ? <ChevronRight size={17}/> : <ChevronLeft size={17}/>}</span></button>
+    <aside className={`left-sidebar gf-sidebar ${collapsed ? 'collapsed' : ''}`}>
+      <button type="button" className="gf-sidebar-toggle" onClick={() => setCollapsed(v => !v)} aria-label={collapsed ? tr('Mostrar menú') : tr('Ocultar menú')} title={collapsed ? tr('Mostrar menú') : tr('Ocultar menú')}>{collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}</button>
 
       {/* =====================================
           ENCABEZADO GEOFASTPE
@@ -134,12 +141,12 @@ export default function Sidebar({
       <div className="gf-sidebar-content">
 
         <div className="gf-nav-caption">
-          MENÚ PRINCIPAL
+          {t('nav.menu')}
         </div>
 
         <nav
           className="gf-navigation"
-          aria-label="Menú principal"
+          aria-label={tr('Menú principal')}
         >
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -158,7 +165,7 @@ export default function Sidebar({
                     item.category
                   )
                 }
-                title={item.label}
+                title={t(`nav.${item.label}`)}
                 aria-current={
                   isSelected ? 'page' : undefined
                 }
@@ -174,7 +181,7 @@ export default function Sidebar({
 
                 {/* NOMBRE DEL MÓDULO */}
                 <span className="gf-nav-label">
-                  {item.label}
+                  {t(`nav.${item.label}`)}
                 </span>
 
                 {/* INDICADOR ACTIVO */}
@@ -215,7 +222,7 @@ export default function Sidebar({
 
         <div className="gf-footer-info">
           <strong>GeoFastPe</strong>
-          <small>Plataforma comunitaria</small>
+          <small>{tr('Plataforma comunitaria')}</small>
         </div>
 
       </div>

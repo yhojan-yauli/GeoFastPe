@@ -1,36 +1,64 @@
-const CACHE_NAME = 'geofastpe-offline-v2';
+const STATIC_CACHE = 'geofastpe-static-v4';
+const RUNTIME_CACHE = 'geofastpe-runtime-v4';
 const APP_SHELL = ['/', '/index.html'];
+const MAP_HOSTS = ['openfreemap', 'mapterhorn', 'arcgisonline', 'routing.openstreetmap'];
+
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(STATIC_CACHE)
+      .then(c => c.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
+  );
 });
+
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('geofastpe-') && key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(k => ![STATIC_CACHE, RUNTIME_CACHE].includes(k)).map(k => caches.delete(k))
+      ))
+      .then(() => self.clients.claim())
+  );
 });
+
 self.addEventListener('fetch', event => {
-  const request = event.request;
-  if (request.method !== 'GET') return;
-  const url = new URL(request.url);
-  const isMapAsset = /\.(pbf|mvt|png|jpg|jpeg|webp|woff2?)$/i.test(url.pathname) || url.hostname.includes('openfreemap') || url.hostname.includes('mapterhorn');
-  const isApiGet = /\/api\/v1\/(mapa\/puntos|eventos|reportes|servicios|ventas|solidaridad|emergencias|geo\/(buscar|ruta|clima))/.test(url.pathname);
-  if (!isMapAsset && !isApiGet && url.origin !== self.location.origin) return;
-  if (url.origin === self.location.origin && !isApiGet && !request.mode.includes('navigate') && !/\.(js|css|svg|png|ico|woff2?)$/i.test(url.pathname)) return;
-  event.respondWith((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    const cached = await cache.match(request);
-    if (cached && (isMapAsset || isApiGet || url.origin === self.location.origin)) {
-      if (isApiGet) {
-        fetch(request).then(response => { if (response.ok) cache.put(request, response.clone()); }).catch(() => {});
-      }
-      return cached;
-    }
-    try {
-      const response = await fetch(request);
-      if (response && (response.ok || response.type === 'opaque')) cache.put(request, response.clone()).catch(() => {});
-      return response;
-    } catch (error) {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+
+  // La API nunca se cachea: evita servir datos de otra sesión o desactualizados.
+  if (url.pathname.startsWith('/api/')) return;
+
+  const cacheable = url.hostname === location.hostname
+    || MAP_HOSTS.some(host => url.hostname.includes(host));
+  if (!cacheable) return;
+
+  // Navegación: red primero, caché solo como respaldo sin conexión.
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req)
+        .then(res => {
+          const copy = res.clone();
+          caches.open(RUNTIME_CACHE).then(c => c.put(req, copy));
+          return res;
+        })
+        .catch(() => caches.match(req).then(cached => cached || caches.match('/index.html')))
+    );
+    return;
+  }
+
+  // Recursos estáticos: caché primero.
+  event.respondWith(
+    caches.match(req).then(cached => {
       if (cached) return cached;
-      if (request.mode === 'navigate') return (await cache.match('/index.html')) || Response.error();
-      throw error;
-    }
-  })());
+      return fetch(req).then(res => {
+        if (res && (res.ok || res.type === 'opaque')) {
+          const copy = res.clone();
+          caches.open(RUNTIME_CACHE).then(c => c.put(req, copy));
+        }
+        return res;
+      });
+    })
+  );
 });

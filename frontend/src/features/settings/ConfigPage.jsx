@@ -1,73 +1,37 @@
 import { useState } from 'react';
-import { Settings, LockKeyhole } from 'lucide-react';
+import { Settings, LockKeyhole, Globe2, Moon, Sun, Volume2, Accessibility, Languages } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { authApi } from '../../api/index.js';
 import PasswordInput from '../../components/common/PasswordInput.jsx';
 import '../../components/common/PasswordInput.css';
 import '../profile/ProfilePage.css';
+import { usePreferences } from '../../preferences/PreferencesContext.jsx';
 
 export default function ConfigPage({ onRequireLogin }) {
   const { isAuthenticated, logout } = useAuth();
+  const { language, setLanguage, theme, setTheme, supportedLanguages, tr } = usePreferences();
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
-  const [message, setMessage] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  if (!isAuthenticated) {
-    return (
-      <section className="gfp-profile gfp-profile-locked">
-        <div className="gfp-profile-lock-icon"><LockKeyhole size={30}/></div>
-        <h2>Configuración privada</h2>
-        <p>Inicia sesión para administrar tu cuenta.</p>
-        <button className="gfp-profile-primary" onClick={() => onRequireLogin?.()}>Iniciar sesión</button>
-      </section>
-    );
-  }
-
-  const update = (e) => {
-    setForm((old) => ({ ...old, [e.target.name]: e.target.value }));
-    setMessage('');
-  };
-
-  const submit = async (e) => {
-    e.preventDefault();
-    if (form.newPassword !== form.confirmPassword) {
-      setMessage('Las contraseñas nuevas no coinciden.');
-      return;
+  const [message, setMessage] = useState(''); const [busy, setBusy] = useState(false);
+  const [nearbyAlerts, setNearbyAlerts] = useState(localStorage.getItem('gf-nearby-alerts') === 'true');
+  const [alertRadius, setAlertRadius] = useState(localStorage.getItem('gf-alert-radius') || '2000');
+  const [planInterest, setPlanInterest] = useState(localStorage.getItem('gf-plan-interest') || '');
+  const toggleNearbyAlerts = async (enabled) => {
+    if (enabled && !('Notification' in window)) { setNearbyAlerts(false); localStorage.setItem('gf-nearby-alerts', 'false'); setMessage(tr('Este navegador no admite notificaciones de escritorio.')); return; }
+    if (enabled && Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') { setNearbyAlerts(false); localStorage.setItem('gf-nearby-alerts', 'false'); setMessage(tr('Permite las notificaciones en tu navegador para recibir novedades cercanas.')); return; }
     }
-
-    try {
-      setBusy(true);
-      await authApi.cambiarPassword(form.currentPassword, form.newPassword);
-      setForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setMessage('Contraseña actualizada correctamente.');
-    } catch (error) {
-      setMessage(error.message || 'No se pudo cambiar la contraseña.');
-    } finally {
-      setBusy(false);
-    }
+    setNearbyAlerts(enabled); localStorage.setItem('gf-nearby-alerts', String(enabled));
   };
-
-  return <main className="gfp-profile">
-    <div className="gfp-profile-topline">
-      <div>
-        <span className="gfp-profile-kicker"><Settings size={14}/> CONFIGURACIÓN</span>
-        <h1>Cuenta y seguridad</h1>
-        <p>Cambia tu contraseña o cierra tu sesión en este dispositivo.</p>
-      </div>
-    </div>
-
-    <section className="gfp-profile-panel">
-      <div className="gfp-profile-panel-heading"><h3>Cambiar contraseña</h3><span>Mínimo 8 caracteres, con letra, número y carácter especial</span></div>
-      <form onSubmit={submit} className="gfp-profile-fields">
-        <PasswordInput label="Contraseña actual *" name="currentPassword" value={form.currentPassword} onChange={update} autoComplete="current-password" required />
-        <PasswordInput label="Nueva contraseña *" name="newPassword" value={form.newPassword} onChange={update} autoComplete="new-password" minLength={8} required />
-        <PasswordInput label="Confirmar nueva contraseña *" name="confirmPassword" value={form.confirmPassword} onChange={update} autoComplete="new-password" minLength={8} required />
-        {message && <p className="gfp-profile-form-alert">{message}</p>}
-        <div className="gfp-profile-modal-actions">
-          <button className="gfp-profile-primary" type="submit" disabled={busy}>{busy ? 'Guardando...' : 'Actualizar contraseña'}</button>
-          <button className="gfp-profile-secondary" type="button" onClick={logout}>Cerrar sesión</button>
-        </div>
-      </form>
-    </section>
+  if (!isAuthenticated) return <section className="gfp-profile gfp-profile-locked"><div className="gfp-profile-lock-icon"><LockKeyhole size={30}/></div><h2>{tr('Configuración privada')}</h2><p>{tr('Inicia sesión para administrar tu cuenta.')}</p><button className="gfp-profile-primary" onClick={()=>onRequireLogin?.()}>{tr('Iniciar sesión')}</button></section>;
+  const update=e=>{setForm(x=>({...x,[e.target.name]:e.target.value}));setMessage('');};
+  const submit=async e=>{e.preventDefault();if(form.newPassword!==form.confirmPassword)return setMessage(tr('Las contraseñas nuevas no coinciden.'));try{setBusy(true);await authApi.cambiarPassword(form.currentPassword,form.newPassword);setForm({currentPassword:'',newPassword:'',confirmPassword:''});setMessage(tr('Contraseña actualizada correctamente.'));}catch(err){setMessage(err.message||tr('No se pudo cambiar la contraseña.'));}finally{setBusy(false);}};
+  return <main className="gfp-profile"><div className="gfp-profile-topline"><div><span className="gfp-profile-kicker"><Settings size={14}/> {tr('CONFIGURACIÓN')}</span><h1>{tr('Personalización y accesibilidad')}</h1><p>{tr('Haz GeoFastPe más cómodo para ti: idioma, tema, lectura por voz y seguridad.')}</p></div></div>
+    <section className="gfp-profile-panel gf-preferences-panel"><div className="gfp-profile-panel-heading"><h3><Globe2 size={18}/> {tr('Idioma de la interfaz')}</h3><span>{tr('Los mensajes también pueden traducirse al idioma seleccionado.')}</span></div><div className="gf-pref-language">{supportedLanguages.map(([code,label])=><button key={code} className={language===code?'active':''} onClick={()=>setLanguage(code)}><Languages size={16}/>{label}</button>)}</div></section>
+    <section className="gfp-profile-panel"><div className="gfp-profile-panel-heading"><h3>{tr('Notificaciones de mi zona')}</h3><span>{tr('Recibe avisos cuando se publiquen nuevos eventos, servicios, reportes o emergencias cerca de tu ubicación.')}</span></div><div className="gf-pref-language"><button className={nearbyAlerts?'active':''} onClick={()=>toggleNearbyAlerts(true)}>{tr('Activar avisos')}</button><button className={!nearbyAlerts?'active':''} onClick={()=>toggleNearbyAlerts(false)}>{tr('Desactivar')}</button><label style={{display:'flex',alignItems:'center',gap:8}}>{tr('Radio')} <select value={alertRadius} onChange={e=>{setAlertRadius(e.target.value);localStorage.setItem('gf-alert-radius',e.target.value);}}><option value="1000">1 km</option><option value="2000">2 km</option><option value="5000">5 km</option><option value="10000">10 km</option></select></label></div><small style={{color:'#777',display:'block',marginTop:10}}>{tr('Requiere permiso de notificaciones del navegador y conexión a internet para detectar publicaciones nuevas.')}</small></section>
+    <section className="gfp-profile-panel"><div className="gfp-profile-panel-heading"><h3><Moon size={18}/> {tr('Apariencia')}</h3><span>{tr('Personaliza el contraste visual de la aplicación.')}</span></div><div className="gf-pref-language"><button className={theme==='light'?'active':''} onClick={()=>setTheme('light')}><Sun size={16}/> {tr('Claro')}</button><button className={theme==='dark'?'active':''} onClick={()=>setTheme('dark')}><Moon size={16}/> {tr('Oscuro')}</button><button className={theme==='high-contrast'?'active':''} onClick={()=>setTheme('high-contrast')}><Accessibility size={16}/> {tr('Alto contraste')}</button></div></section>
+    <section className="gfp-profile-panel"><div className="gfp-profile-panel-heading"><h3><Volume2 size={18}/> {tr('Herramientas de voz')}</h3><span>{tr('En Chrome y Edge puedes dictar búsquedas y mensajes y escuchar textos.')}</span></div><div className="gf-voice-info"><strong>{tr('Voz integrada')}</strong><p>{tr('Usa el micrófono del buscador para consultas como “eventos cerca” o “servicios de salud”. En los mensajes puedes dictar y reproducir cada mensaje.')}</p></div></section>
+    <section className="gfp-profile-panel"><div className="gfp-profile-panel-heading"><h3>{tr('Planes y servicios de suscripción')}</h3><span>{tr('Opciones comerciales para financiar el mantenimiento y ampliar los servicios de GeoFastPe.')}</span></div><div className="gf-subscription-grid"><article><strong>{tr('Comunidad')}</strong><h2>{tr('Gratis')}</h2><p>{tr('Mapa, alertas básicas y publicaciones comunitarias.')}</p><button type="button" disabled>{tr('Plan base')}</button></article><article><strong>{tr('Vecinal Plus')}</strong><h2>S/ 9.90 <small>/ {tr('mes')}</small></h2><p>{tr('Alertas ampliadas, filtros avanzados, seguimiento de zonas y más favoritos.')}</p><button type="button" onClick={()=>{setPlanInterest('Vecinal Plus');localStorage.setItem('gf-plan-interest','Vecinal Plus');}}>{tr('Me interesa')}</button></article><article><strong>{tr('Negocio Pro')}</strong><h2>S/ 29.90 <small>/ {tr('mes')}</small></h2><p>{tr('Mayor visibilidad de servicios y ventas, estadísticas y perfil comercial.')}</p><button type="button" onClick={()=>{setPlanInterest('Negocio Pro');localStorage.setItem('gf-plan-interest','Negocio Pro');}}>{tr('Me interesa')}</button></article></div>{planInterest&&<p className="gfp-profile-form-alert">{tr('Has seleccionado')} {planInterest}. {tr('La activación de cobros requiere integrar una pasarela de pago y configurar las credenciales comerciales.')}</p>}<small style={{color:'#777'}}>{tr('Precios referenciales en soles. Esta versión presenta los planes, pero no realiza cobros ni activa suscripciones automáticamente.')}</small></section>
+    <section className="gfp-profile-panel"><div className="gfp-profile-panel-heading"><h3>{tr('Cambiar contraseña')}</h3><span>{tr('Mínimo 8 caracteres, con letra, número y carácter especial')}</span></div><form onSubmit={submit} className="gfp-profile-fields"><PasswordInput label={tr('Contraseña actual *')} name="currentPassword" value={form.currentPassword} onChange={update} autoComplete="current-password" required/><PasswordInput label={tr('Nueva contraseña *')} name="newPassword" value={form.newPassword} onChange={update} autoComplete="new-password" minLength={8} required/><PasswordInput label={tr('Confirmar nueva contraseña *')} name="confirmPassword" value={form.confirmPassword} onChange={update} autoComplete="new-password" minLength={8} required/>{message&&<p className="gfp-profile-form-alert">{message}</p>}<div className="gfp-profile-modal-actions"><button className="gfp-profile-primary" type="submit" disabled={busy}>{busy?tr('Guardando...'):tr('Actualizar contraseña')}</button><button className="gfp-profile-secondary" type="button" onClick={logout}>{tr('Cerrar sesión')}</button></div></form></section>
   </main>;
 }
