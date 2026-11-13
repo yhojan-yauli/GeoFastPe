@@ -14,6 +14,7 @@ import {
   LayoutGrid
 } from 'lucide-react';
 
+import { usePreferences } from '../../preferences/PreferencesContext.jsx';
 import './SalesPage.css';
 
 const categories = [
@@ -39,6 +40,7 @@ export default function SalesPage({
   onCreateSale,
   onViewSale
 }) {
+  const { tr } = usePreferences();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Todos');
   const [sortBy, setSortBy] = useState('recent');
@@ -70,14 +72,14 @@ export default function SalesPage({
           </div>
 
           <div>
-            <h1>Ventas Locales</h1>
-            <p>Compra, vende e intercambia productos en tu comunidad.</p>
+            <h1>{tr('Ventas Locales')}</h1>
+            <p>{tr('Compra, vende e intercambia productos en tu comunidad.')}</p>
           </div>
         </div>
 
         <button type="button" className="sales-publish-btn" onClick={() => onCreateSale?.()}>
           <Plus size={18} />
-          Publicar venta
+          {tr('Publicar venta')}
         </button>
       </div>
 
@@ -85,7 +87,7 @@ export default function SalesPage({
         <Search size={20} />
         <input
           type="search"
-          placeholder="Buscar productos en GeoFastPe..."
+          placeholder={tr('Buscar productos en GeoFastPe...')}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
@@ -102,21 +104,21 @@ export default function SalesPage({
               onClick={() => setCategory(item.label)}
             >
               <Icon size={16} />
-              {item.label}
+              {tr(item.label)}
             </button>
           );
         })}
       </div>
 
       <div className="sales-results-heading">
-        <h2>Productos disponibles ({filteredProducts.length})</h2>
+        <h2>{tr('Productos disponibles')} ({filteredProducts.length})</h2>
 
         <div className="sales-sort">
-          <label htmlFor="sales-sort-select">Ordenar por:</label>
+          <label htmlFor="sales-sort-select">{tr('Ordenar por:')}</label>
           <select id="sales-sort-select" value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
-            <option value="recent">Más recientes</option>
-            <option value="price-asc">Menor precio</option>
-            <option value="price-desc">Mayor precio</option>
+            <option value="recent">{tr('Más recientes')}</option>
+            <option value="price-asc">{tr('Menor precio')}</option>
+            <option value="price-desc">{tr('Mayor precio')}</option>
           </select>
         </div>
       </div>
@@ -141,13 +143,13 @@ export default function SalesPage({
 
                 <div className="sales-location">
                   <MapPin size={14} />
-                  <span>{product.location || 'Sin ubicación'}</span>
+                  <span>{product.location || tr('Sin ubicación')}</span>
                 </div>
 
-                <span className="sales-category-badge">{product.category || 'Otros'}</span>
+                <span className="sales-category-badge">{product.category ? tr(product.category) : tr('Otros')}</span>
 
                 <button type="button" className="sales-detail-btn" onClick={() => onViewSale?.(product)}>
-                  Ver detalle
+                  {tr('Ver detalle')}
                 </button>
               </div>
             </article>
@@ -156,8 +158,8 @@ export default function SalesPage({
       ) : (
         <div className="sales-empty">
           <ShoppingCart size={38} />
-          <h3>No se encontraron productos</h3>
-          <p>Prueba otra búsqueda o selecciona una categoría diferente.</p>
+          <h3>{tr('No se encontraron productos')}</h3>
+          <p>{tr('Prueba otra búsqueda o selecciona una categoría diferente.')}</p>
         </div>
       )}
     </section>

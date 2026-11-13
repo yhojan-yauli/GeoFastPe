@@ -1,10 +1,12 @@
 import { useAuth } from './AuthContext.jsx';
+import { usePreferences } from '../../preferences/PreferencesContext.jsx';
 
 export default function AuthHeader({
   onLogin,
   onRegister
 }) {
   const { isAuthenticated, user, logout } = useAuth();
+  const { tr } = usePreferences();
 
   return (
     <div className="auth-header">
@@ -15,10 +17,10 @@ export default function AuthHeader({
           </div>
 
           <div className="auth-account-info">
-            <strong>{user?.name || 'Mi cuenta'}</strong>
+            <strong>{user?.name || tr('Mi cuenta')}</strong>
 
             <button type="button" onClick={logout}>
-              Cerrar sesión
+              {tr('Cerrar sesión')}
             </button>
           </div>
         </div>
@@ -29,7 +31,7 @@ export default function AuthHeader({
             className="auth-header-login"
             onClick={onLogin}
           >
-            Iniciar sesión
+            {tr('Iniciar sesión')}
           </button>
 
           <button
@@ -37,7 +39,7 @@ export default function AuthHeader({
             className="auth-header-register"
             onClick={onRegister}
           >
-            Crear cuenta
+            {tr('Crear cuenta')}
           </button>
         </div>
       )}

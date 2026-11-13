@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, ImagePlus, MapPin, Wrench } from 'lucide-react';
 import MapPointPicker from '../../components/common/MapPointPicker.jsx';
+import { usePreferences } from '../../preferences/PreferencesContext.jsx';
 import './PublishService.css';
 
 const categories = ['Hogar', 'Transporte', 'Salud', 'Educación', 'Otros'];
@@ -30,6 +31,7 @@ const initialForm = {
 };
 
 export default function PublishService({ onBack, onSubmit, onPickLocation }) {
+  const { tr } = usePreferences();
   const [form, setForm] = useState(initialForm);
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState('');
@@ -48,13 +50,13 @@ export default function PublishService({ onBack, onSubmit, onPickLocation }) {
     if (!file) return;
 
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setError('Solo se permiten imágenes JPG, PNG o WEBP.');
+      setError(tr('Solo se permiten imágenes JPG, PNG o WEBP.'));
       event.target.value = '';
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setError('La imagen no puede superar los 5 MB.');
+      setError(tr('La imagen no puede superar los 5 MB.'));
       event.target.value = '';
       return;
     }
@@ -74,7 +76,7 @@ export default function PublishService({ onBack, onSubmit, onPickLocation }) {
     setSuccess('');
 
     if (!point) {
-      setError('Elige la ubicación del servicio haciendo clic en el mapa.');
+      setError(tr('Elige la ubicación del servicio haciendo clic en el mapa.'));
       return;
     }
 
@@ -95,9 +97,9 @@ export default function PublishService({ onBack, onSubmit, onPickLocation }) {
     try {
       setBusy(true);
       await onSubmit?.(payload);
-      setSuccess('Servicio publicado correctamente.');
+      setSuccess(tr('Servicio publicado correctamente.'));
     } catch (submitError) {
-      setError(submitError.message || 'No se pudo publicar el servicio.');
+      setError(submitError.message || tr('No se pudo publicar el servicio.'));
     } finally {
       setBusy(false);
     }
@@ -106,85 +108,85 @@ export default function PublishService({ onBack, onSubmit, onPickLocation }) {
   return (
     <section className="publish-service-page">
       <button type="button" className="publish-back" onClick={onBack}>
-        <ArrowLeft size={17} /> Volver a Servicios Locales
+        <ArrowLeft size={17} /> {tr('Volver a Servicios Locales')}
       </button>
 
       <header className="publish-heading">
         <div className="publish-heading-icon"><Wrench size={26} /></div>
         <div>
-          <h1>Publicar Nuevo Servicio</h1>
-          <p>Ofrece un servicio a tu comunidad.</p>
+          <h1>{tr('Publicar Nuevo Servicio')}</h1>
+          <p>{tr('Ofrece un servicio a tu comunidad.')}</p>
         </div>
       </header>
 
       <form className="publish-form" onSubmit={handleSubmit}>
         <div className="publish-field">
-          <label htmlFor="service-title">Título del servicio *</label>
-          <input id="service-title" name="title" value={form.title} onChange={updateField} placeholder="Ej. Electricista a domicilio" maxLength={100} required />
+          <label htmlFor="service-title">{tr('Título del servicio *')}</label>
+          <input id="service-title" name="title" value={form.title} onChange={updateField} placeholder={tr('Ej. Electricista a domicilio')} maxLength={100} required />
         </div>
 
         <div className="publish-two-columns">
           <div className="publish-field">
-            <label htmlFor="service-category">Categoría *</label>
+            <label htmlFor="service-category">{tr('Categoría *')}</label>
             <select id="service-category" name="category" value={form.category} onChange={updateField} required>
-              {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+              {categories.map((category) => <option key={category} value={category}>{tr(category)}</option>)}
             </select>
           </div>
 
           <div className="publish-field">
-            <label htmlFor="service-type">Tipo de servicio *</label>
+            <label htmlFor="service-type">{tr('Tipo de servicio *')}</label>
             <select id="service-type" name="type" value={form.type} onChange={updateField} required>
-              {serviceTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+              {serviceTypes.map((type) => <option key={type} value={type}>{tr(type)}</option>)}
             </select>
           </div>
         </div>
 
         <div className="publish-field">
-          <label htmlFor="service-description">Descripción *</label>
-          <textarea id="service-description" name="description" value={form.description} onChange={updateField} placeholder="Describe tu servicio, horarios y experiencia..." rows={5} maxLength={500} required />
+          <label htmlFor="service-description">{tr('Descripción *')}</label>
+          <textarea id="service-description" name="description" value={form.description} onChange={updateField} placeholder={tr('Describe tu servicio, horarios y experiencia...')} rows={5} maxLength={500} required />
           <span className="publish-counter">{form.description.length}/500</span>
         </div>
 
         <div className="publish-field">
-          <label htmlFor="service-phone">Número de contacto *</label>
-          <input id="service-phone" name="phone" type="tel" value={form.phone} onChange={updateField} placeholder="Ej. 987654321" pattern="[0-9]{9}" maxLength={9} inputMode="numeric" title="Ingresa un número de 9 dígitos" required />
+          <label htmlFor="service-phone">{tr('Número de contacto *')}</label>
+          <input id="service-phone" name="phone" type="tel" value={form.phone} onChange={updateField} placeholder={tr('Ej. 987654321')} pattern="[0-9]{9}" maxLength={9} inputMode="numeric" title={tr('Ingresa un número de 9 dígitos')} required />
         </div>
 
         <div className="publish-location">
           <div className="publish-location-title">
             <span><MapPin size={22} /></span>
             <div>
-              <h3>Ubicación del servicio *</h3>
-              <p>Haz clic en el mapa para marcar dónde prestas el servicio.</p>
+              <h3>{tr('Ubicación del servicio *')}</h3>
+              <p>{tr('Haz clic en el mapa para marcar dónde prestas el servicio.')}</p>
             </div>
           </div>
 
           <MapPointPicker value={point} onPick={onPickLocation} onChange={setPoint} />
 
           <div className="publish-field">
-            <label htmlFor="service-address">Referencia o dirección (opcional)</label>
-            <input id="service-address" name="address" value={form.address} onChange={updateField} placeholder="Ej. Av. Ejército 123, Cayma" maxLength={200} />
+            <label htmlFor="service-address">{tr('Referencia o dirección (opcional)')}</label>
+            <input id="service-address" name="address" value={form.address} onChange={updateField} placeholder={tr('Ej. Av. Ejército 123, Cayma')} maxLength={200} />
           </div>
         </div>
 
         <div className="publish-field">
-          <label htmlFor="service-availability">Disponibilidad *</label>
+          <label htmlFor="service-availability">{tr('Disponibilidad *')}</label>
           <select id="service-availability" name="availability" value={form.availability} onChange={updateField} required>
-            <option value="">Selecciona tu horario</option>
-            {availabilityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            <option value="">{tr('Selecciona tu horario')}</option>
+            {availabilityOptions.map((option) => <option key={option.value} value={option.value}>{tr(option.label)}</option>)}
           </select>
         </div>
 
         <div className="publish-field">
-          <label htmlFor="service-image">Imagen del servicio</label>
+          <label htmlFor="service-image">{tr('Imagen del servicio')}</label>
           <label className="publish-image-upload" htmlFor="service-image">
             {preview ? (
-              <img src={preview} alt="Vista previa del servicio" />
+              <img src={preview} alt={tr('Vista previa del servicio')} />
             ) : (
               <>
                 <span className="publish-upload-icon"><ImagePlus size={28} /></span>
-                <strong>Seleccionar imagen</strong>
-                <small>JPG, PNG o WEBP, máximo 5 MB</small>
+                <strong>{tr('Seleccionar imagen')}</strong>
+                <small>{tr('JPG, PNG o WEBP, máximo 5 MB')}</small>
               </>
             )}
           </label>
@@ -195,9 +197,9 @@ export default function PublishService({ onBack, onSubmit, onPickLocation }) {
         {success && <p className="publish-message" role="status">{success}</p>}
 
         <div className="publish-actions">
-          <button type="button" className="publish-cancel" onClick={onBack} disabled={busy}>Cancelar</button>
+          <button type="button" className="publish-cancel" onClick={onBack} disabled={busy}>{tr('Cancelar')}</button>
           <button type="submit" className="publish-submit" disabled={busy}>
-            {busy ? 'Publicando...' : 'Publicar servicio'}
+            {busy ? tr('Publicando...') : tr('Publicar servicio')}
           </button>
         </div>
       </form>

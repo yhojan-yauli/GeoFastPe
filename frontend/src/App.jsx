@@ -52,6 +52,7 @@ import MessagesPage from './features/messages/MessagesPage.jsx';
 import ProfilePage from './features/profile/ProfilePage.jsx';
 import ConfigPage from './features/settings/ConfigPage.jsx';
 import GeoFastAssistant from './components/GeoFastAssistant.jsx';
+import { usePreferences } from './preferences/PreferencesContext.jsx';
 
 import {
   eventsApi,
@@ -67,6 +68,7 @@ const PRIVATE_SECTIONS = ['Mensajes', 'Mi Perfil', 'Configuración'];
 
 export default function App() {
   const { isAuthenticated } = useAuth();
+  const { tr } = usePreferences();
 
   // DATOS DESDE LA API
   const [sales, setSales] = useState([]);
@@ -111,7 +113,7 @@ export default function App() {
   // ==========================================
   // CARGA DE DATOS
   // ==========================================
-  const showError = (error) => setNotice(error?.message || 'Ocurrió un error inesperado.');
+  const showError = (error) => setNotice(error?.message || tr('Ocurrió un error inesperado.'));
 
   // Muestra en el mapa la categoría de un registro recién creado.
 const showOnMap = (category, point = null) => {
@@ -143,7 +145,7 @@ const showOnMap = (category, point = null) => {
   const pickLocation = () => new Promise((resolve, reject) => {
     const map = window.GeoFastPe?.getMap();
     if (!map) {
-      reject(new Error('El mapa todavía no está listo.'));
+      reject(new Error(tr('El mapa todavía no está listo.')));
       return;
     }
 
@@ -159,7 +161,7 @@ const showOnMap = (category, point = null) => {
       map.off('click', onClick);
       cancelPickRef.current = null;
       setPicking(false);
-      reject(new Error('Selección de ubicación cancelada.'));
+      reject(new Error(tr('Selección de ubicación cancelada.')));
     };
 
     map.once('click', onClick);
@@ -468,7 +470,7 @@ const showOnMap = (category, point = null) => {
   const contactSeller = async (product) => {
     if (!isAuthenticated) {
       requireLogin();
-      throw new Error('Inicia sesión para contactar al vendedor.');
+      throw new Error(tr('Inicia sesión para contactar al vendedor.'));
     }
     const conversacion = await salesApi.contactar(product.id);
     setPendingConversationId(conversacion.id);
@@ -679,7 +681,7 @@ const showOnMap = (category, point = null) => {
   const toggleParticipation = async (event) => {
     if (!isAuthenticated) {
       requireLogin();
-      throw new Error('Inicia sesión para participar en el evento.');
+      throw new Error(tr('Inicia sesión para participar en el evento.'));
     }
     if (event.joined) {
       await eventsApi.dejarDeParticipar(event.id);
@@ -752,7 +754,7 @@ const showOnMap = (category, point = null) => {
 
   const backButton = (onClick) => (
     <button type="button" className="publish-back" onClick={onClick} style={{ margin: '16px 0 0 32px' }}>
-      <ArrowLeft size={16} /> Volver al mapa
+      <ArrowLeft size={16} /> {tr('Volver al mapa')}
     </button>
   );
 
@@ -760,8 +762,8 @@ const showOnMap = (category, point = null) => {
     <main className="geofastpe-app">
       {picking && (
         <div role="status" style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 3000, background: '#7c3aed', color: '#fff', padding: '10px 14px 10px 18px', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span>Haz clic en el mapa para marcar la ubicación</span>
-          <button type="button" onClick={cancelPick} style={{ background: '#fff', color: '#5b21b6', border: 0, borderRadius: 8, padding: '6px 10px', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+          <span>{tr('Haz clic en el mapa para marcar la ubicación')}</span>
+          <button type="button" onClick={cancelPick} style={{ background: '#fff', color: '#5b21b6', border: 0, borderRadius: 8, padding: '6px 10px', fontWeight: 600, cursor: 'pointer' }}>{tr('Cancelar')}</button>
         </div>
       )}
 
@@ -937,7 +939,7 @@ const showOnMap = (category, point = null) => {
             {eventsView === 'create' ? (
               <CreateEvent onBack={openEvents} onSubmitEvent={submitEvent} onPickLocation={pickLocation} />
             ) : eventsView === 'detail' ? (
-              <EventDetail event={selectedEvent} onBack={openEvents} onToggleParticipation={toggleParticipation} />
+              <EventDetail event={selectedEvent} onBack={openEvents} onToggleParticipation={toggleParticipation} onShowMap={backToEventsMap} />
             ) : (
               <div>
                 {backButton(backToEventsMap)}
@@ -977,7 +979,7 @@ const showOnMap = (category, point = null) => {
             {salesView === 'publish' ? (
               <PublishSale onBack={backToSales} onSubmitSale={submitSale} onPickLocation={pickLocation} />
             ) : salesView === 'detail' ? (
-              <SaleDetail product={selectedSale} onBack={backToSales} onContactSeller={contactSeller} />
+              <SaleDetail product={selectedSale} onBack={backToSales} onContactSeller={contactSeller} onShowMap={backToSalesMap} />
             ) : (
               <div>
                 {backButton(backToSalesMap)}

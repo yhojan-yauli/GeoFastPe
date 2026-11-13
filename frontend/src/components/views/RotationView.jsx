@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { usePreferences } from '../../preferences/PreferencesContext.jsx';
 
 // Vista RotationView; conserva los IDs y el marcado que utiliza el motor original.
 const markup = `<div id="rotation-control">
@@ -9,5 +10,12 @@ const markup = `<div id="rotation-control">
     </div>`;
 
 export default function RotationView() {
+  const { tr } = usePreferences();
+
+  useEffect(() => {
+    const compass = document.getElementById('rotation-compass');
+    if (compass) compass.title = tr('Arrastra para rotar / Clic para restablecer');
+  }, [tr]);
+
   return <div className="view-slot" dangerouslySetInnerHTML={{ __html: markup }} />;
 }

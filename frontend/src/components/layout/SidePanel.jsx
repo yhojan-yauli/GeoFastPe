@@ -27,6 +27,7 @@ import {
 
 import AuthHeader from "../../features/auth/AuthHeader.jsx";
 import PublicationDetailView from "../views/PublicationDetailView.jsx";
+import { usePreferences } from "../../preferences/PreferencesContext.jsx";
 
 const PRIVATE_SECTIONS = [
   "Mensajes",
@@ -102,16 +103,16 @@ const markerIconFor = (item) => {
   return MapPin;
 };
 
-const formatDistance = (distance) => {
+const formatDistance = (distance, tr) => {
   if (distance == null || distance === "") {
-    return "Distancia no disponible";
+    return tr("Distancia no disponible");
   }
 
   const value = Number(distance);
 
   return Number.isFinite(value)
     ? `${(value / 1000).toFixed(1)} km`
-    : "Distancia no disponible";
+    : tr("Distancia no disponible");
 };
 
 export default function SidePanel({
@@ -147,6 +148,7 @@ export default function SidePanel({
   onMessagePublication,
   onSelectPublicationLocation
 }) {
+  const { tr } = usePreferences();
   const [selectedPublication, setSelectedPublication] =
     useState(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -205,13 +207,13 @@ export default function SidePanel({
 
   const title =
     section === "Inicio"
-      ? "Todo cerca de ti"
+      ? tr("Todo cerca de ti")
       : section === "Servicios"
-      ? "Servicios cerca de ti"
+      ? tr("Servicios cerca de ti")
       : section === "Emergencias"
-      ? "Emergencias cercanas"
+      ? tr("Emergencias cercanas")
       : section === "Solidaridad"
-      ? "Solidaridad cerca de ti"
+      ? tr("Solidaridad cerca de ti")
       : section;
 
   const countFor = () => {
@@ -234,9 +236,9 @@ export default function SidePanel({
     if (!isMapSection) {
       return (
         <div className="empty-state">
-          <h3>{section}</h3>
+          <h3>{tr(section)}</h3>
           <p>
-            Usa el panel central para gestionar esta sección.
+            {tr("Usa el panel central para gestionar esta sección.")}
           </p>
         </div>
       );
@@ -247,11 +249,9 @@ export default function SidePanel({
       if (emergencyReports.length === 0) {
         return (
           <div className="empty-state">
-            <h3>No hay emergencias registradas</h3>
+            <h3>{tr("No hay emergencias registradas")}</h3>
             <p>
-              Cuando se reporte una emergencia aparecerá
-              aquí. No se notifica a las autoridades
-              automáticamente.
+              {tr("Cuando se reporte una emergencia aparecerá aquí. No se notifica a las autoridades automáticamente.")}
             </p>
           </div>
         );
@@ -288,11 +288,11 @@ export default function SidePanel({
             <div className="nearby-copy">
               <h3>{report.title}</h3>
               <p>
-                {report.type} · Urgencia {report.urgency}
+                {tr(report.type)} · {tr("Urgencia")} {tr(report.urgency)}
               </p>
               <small>
                 {report.locationText ||
-                  "Ubicación por coordenadas"}
+                  tr("Ubicación por coordenadas")}
               </small>
             </div>
 
@@ -307,10 +307,9 @@ export default function SidePanel({
       if (citizenReports.length === 0) {
         return (
           <div className="empty-state">
-            <h3>Reportes comunitarios</h3>
+            <h3>{tr("Reportes comunitarios")}</h3>
             <p>
-              Aún no hay reportes. Abre el listado para
-              crear el primero.
+              {tr("Aún no hay reportes. Abre el listado para crear el primero.")}
             </p>
           </div>
         );
@@ -344,11 +343,11 @@ export default function SidePanel({
           <div className="nearby-copy">
             <h3>{report.title}</h3>
             <p>
-              {report.category} ·{" "}
+              {tr(report.category)} ·{" "}
               {report.location ||
-                "Ubicación por coordenadas"}
+                tr("Ubicación por coordenadas")}
             </p>
-            <small>{report.status}</small>
+            <small>{tr(report.status)}</small>
           </div>
 
           <ArrowRight size={18} />
@@ -361,10 +360,9 @@ export default function SidePanel({
       if (communityEvents.length === 0) {
         return (
           <div className="empty-state">
-            <h3>Eventos comunitarios</h3>
+            <h3>{tr("Eventos comunitarios")}</h3>
             <p>
-              Abre el catálogo para explorar eventos o
-              publicar una actividad.
+              {tr("Abre el catálogo para explorar eventos o publicar una actividad.")}
             </p>
           </div>
         );
@@ -398,7 +396,7 @@ export default function SidePanel({
           <div className="nearby-copy">
             <h3>{event.title}</h3>
             <p>
-              {event.category} · {event.date} ·{" "}
+              {tr(event.category)} · {event.date} ·{" "}
               {event.time}
             </p>
             <small>{event.location}</small>
@@ -417,11 +415,10 @@ export default function SidePanel({
             <MapPin size={34} />
           </div>
 
-          <h3>No hay resultados en esta zona</h3>
+          <h3>{tr("No hay resultados en esta zona")}</h3>
 
           <p>
-            Amplía el radio o cambia de ubicación para
-            encontrar más elementos.
+            {tr("Amplía el radio o cambia de ubicación para encontrar más elementos.")}
           </p>
         </div>
       );
@@ -481,25 +478,25 @@ export default function SidePanel({
             <h3>{item.title}</h3>
 
             <p>
-              {item.type || "Punto"} ·{" "}
-              {formatDistance(item.distance)}
+              {item.type ? tr(item.type) : tr("Punto")} ·{" "}
+              {formatDistance(item.distance, tr)}
             </p>
 
             {isService && (
               <small className="rating">
-                Ver información del servicio
+                {tr("Ver información del servicio")}
               </small>
             )}
 
             {isSale && (
               <small>
-                Selecciona para ver el producto
+                {tr("Selecciona para ver el producto")}
               </small>
             )}
 
             {isSolidarity && (
               <small>
-                Selecciona para ver la publicación
+                {tr("Selecciona para ver la publicación")}
               </small>
             )}
           </div>
@@ -507,7 +504,7 @@ export default function SidePanel({
           <button
             type="button"
             className="card-arrow"
-            aria-label={`Ver detalle de ${item.title}`}
+            aria-label={`${tr("Ver detalle de")} ${item.title}`}
             onClick={(event) => {
               event.stopPropagation();
               showDetail(item);
@@ -522,7 +519,7 @@ export default function SidePanel({
 
   return (
     <aside className={`right-panel ${collapsed ? "collapsed" : ""}`}>
-      <button type="button" className="gf-panel-toggle" onClick={() => setCollapsed(v => !v)} aria-label={collapsed ? "Mostrar panel" : "Ocultar panel"}>{collapsed ? <ArrowRight size={18} /> : <ArrowRight size={18} style={{ transform: "rotate(180deg)" }} />}</button>
+      <button type="button" className="gf-panel-toggle" onClick={() => setCollapsed(v => !v)} aria-label={collapsed ? tr("Mostrar panel") : tr("Ocultar panel")}>{collapsed ? <ArrowRight size={18} /> : <ArrowRight size={18} style={{ transform: "rotate(180deg)" }} />}</button>
       {selectedPublication ? (
         <PublicationDetailView
           publication={selectedPublication}
@@ -536,16 +533,16 @@ export default function SidePanel({
             <div>
               <span className="eyebrow">
                 {isMapSection
-                  ? "RADAR COMUNITARIO"
-                  : "GEOFASTPE · CUENTA"}
+                  ? tr("RADAR COMUNITARIO")
+                  : tr("GEOFASTPE · CUENTA")}
               </span>
 
               <h2>{title}</h2>
 
               <p>
                 {isMapSection
-                  ? `Resultados dentro de un radio de ${radius} m`
-                  : "Tu espacio comunitario"}
+                  ? `${tr('Resultados dentro de un radio de')} ${radius} m`
+                  : tr("Tu espacio comunitario")}
               </p>
             </div>
 
@@ -558,12 +555,12 @@ export default function SidePanel({
             section !== "Emergencias" && (
               <div className="radius-filter">
                 <div className="filter-label">
-                  <span>Radio de búsqueda</span>
+                  <span>{tr("Radio de búsqueda")}</span>
                   <strong>{radius} m</strong>
                 </div>
 
                 <input
-                  aria-label="Radio de búsqueda"
+                  aria-label={tr("Radio de búsqueda")}
                   type="range"
                   min="500"
                   max="5000"
@@ -582,8 +579,7 @@ export default function SidePanel({
                 </div>
 
                 <div className="filter-note">
-                  El listado y los marcadores se limitan
-                  a la zona circular del mapa.
+                  {tr("El listado y los marcadores se limitan a la zona circular del mapa.")}
                 </div>
               </div>
             )}
@@ -592,9 +588,7 @@ export default function SidePanel({
           {section === "Emergencias" && (
             <div className="radius-filter">
               <p>
-                Consulta las alertas registradas.
-                No se notifica a las autoridades
-                automáticamente.
+                {tr("Consulta las alertas registradas. No se notifica a las autoridades automáticamente.")}
               </p>
 
               <button
@@ -604,7 +598,7 @@ export default function SidePanel({
                   onViewEmergencies?.()
                 }
               >
-                Ver Emergencias (SOS)
+                {tr("Ver Emergencias (SOS)")}
                 <ArrowRight size={16} />
               </button>
             </div>
@@ -614,8 +608,7 @@ export default function SidePanel({
           {section === "Eventos" && (
             <div className="radius-filter">
               <p>
-                Explora los eventos comunitarios
-                publicados por tu comunidad.
+                {tr("Explora los eventos comunitarios publicados por tu comunidad.")}
               </p>
 
               <button
@@ -623,7 +616,7 @@ export default function SidePanel({
                 className="publish-back"
                 onClick={() => onViewEvents?.()}
               >
-                Ver Eventos Comunitarios
+                {tr("Ver Eventos Comunitarios")}
                 <ArrowRight size={16} />
               </button>
             </div>
@@ -633,8 +626,7 @@ export default function SidePanel({
           {section === "Reportes" && (
             <div className="radius-filter">
               <p>
-                Consulta incidencias comunitarias
-                y crea reportes.
+                {tr("Consulta incidencias comunitarias y crea reportes.")}
               </p>
 
               <button
@@ -642,7 +634,7 @@ export default function SidePanel({
                 className="publish-back"
                 onClick={() => onViewReports?.()}
               >
-                Ver Reportes Comunitarios
+                {tr("Ver Reportes Comunitarios")}
                 <ArrowRight size={16} />
               </button>
             </div>
@@ -658,18 +650,17 @@ export default function SidePanel({
                   onClick={() => onPublishSale?.()}
                 >
                   <Plus size={17} />
-                  Publicar venta
+                  {tr("Publicar venta")}
                 </button>
 
                 <small>
-                  Vende productos a tu comunidad.
+                  {tr("Vende productos a tu comunidad.")}
                 </small>
               </div>
 
               <div className="radius-filter">
                 <p>
-                  Explora los productos publicados
-                  por tu comunidad.
+                  {tr("Explora los productos publicados por tu comunidad.")}
                 </p>
 
                 <button
@@ -679,7 +670,7 @@ export default function SidePanel({
                     onViewSalesCatalog?.()
                   }
                 >
-                  Ver Ventas Locales
+                  {tr("Ver Ventas Locales")}
                   <ArrowRight size={16} />
                 </button>
               </div>
@@ -698,7 +689,7 @@ export default function SidePanel({
                   }
                 >
                   <Plus size={17} />
-                  Publicar donación
+                  {tr("Publicar donación")}
                 </button>
 
                 <button
@@ -708,19 +699,17 @@ export default function SidePanel({
                     onRequestHelp?.()
                   }
                 >
-                  Solicitar ayuda
+                  {tr("Solicitar ayuda")}
                 </button>
 
                 <small>
-                  Comparte recursos o solicita
-                  apoyo comunitario.
+                  {tr("Comparte recursos o solicita apoyo comunitario.")}
                 </small>
               </div>
 
               <div className="radius-filter">
                 <p>
-                  Consulta las donaciones y solicitudes
-                  de ayuda de la comunidad.
+                  {tr("Consulta las donaciones y solicitudes de ayuda de la comunidad.")}
                 </p>
 
                 <button
@@ -730,7 +719,7 @@ export default function SidePanel({
                     onViewSolidarity?.()
                   }
                 >
-                  Ver Solidaridad y Donaciones
+                  {tr("Ver Solidaridad y Donaciones")}
                   <ArrowRight size={16} />
                 </button>
               </div>
@@ -748,12 +737,11 @@ export default function SidePanel({
                 }
               >
                 <Plus size={17} />
-                Reportar emergencia
+                {tr("Reportar emergencia")}
               </button>
 
               <small>
-                Registra una alerta para informar
-                a la comunidad.
+                {tr("Registra una alerta para informar a la comunidad.")}
               </small>
             </div>
           )}
@@ -769,11 +757,11 @@ export default function SidePanel({
                 }
               >
                 <Plus size={17} />
-                Crear reporte
+                {tr("Crear reporte")}
               </button>
 
               <small>
-                Informa sobre problemas de tu comunidad.
+                {tr("Informa sobre problemas de tu comunidad.")}
               </small>
             </div>
           )}
@@ -789,11 +777,11 @@ export default function SidePanel({
                 }
               >
                 <Plus size={17} />
-                Crear evento
+                {tr("Crear evento")}
               </button>
 
               <small>
-                Organiza actividades para tu comunidad.
+                {tr("Organiza actividades para tu comunidad.")}
               </small>
             </div>
           )}
@@ -809,12 +797,11 @@ export default function SidePanel({
                 }
               >
                 <Plus size={17} />
-                Publicar servicio
+                {tr("Publicar servicio")}
               </button>
 
               <small>
-                Ofrece tus servicios a los vecinos
-                de tu comunidad.
+                {tr("Ofrece tus servicios a los vecinos de tu comunidad.")}
               </small>
             </div>
           )}
@@ -837,8 +824,8 @@ export default function SidePanel({
             <span className="live-dot" />
 
             {isMapSection
-              ? "Actualizado según el área visible"
-              : "Datos en tiempo real desde el servidor"}
+              ? tr("Actualizado según el área visible")
+              : tr("Datos en tiempo real desde el servidor")}
           </div>
         </>
       )}

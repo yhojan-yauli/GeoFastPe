@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { usePreferences } from '../../preferences/PreferencesContext.jsx';
 
 // Vista SearchView; conserva los IDs y el marcado que utiliza el motor original.
 const markup = `<div id="search-container">
@@ -11,5 +12,19 @@ const markup = `<div id="search-container">
     </div>`;
 
 export default function SearchView() {
+  const { tr } = usePreferences();
+
+  useEffect(() => {
+    const input = document.getElementById('search-input');
+    if (input) input.placeholder = tr('Buscar en GeoFastPe...');
+    const voice = document.getElementById('search-voice-btn');
+    if (voice) {
+      voice.title = tr('Buscar por voz');
+      voice.setAttribute('aria-label', tr('Buscar por voz'));
+    }
+    const button = document.getElementById('search-btn');
+    if (button) button.textContent = tr('Buscar');
+  }, [tr]);
+
   return <div className="view-slot" dangerouslySetInnerHTML={{ __html: markup }} />;
 }

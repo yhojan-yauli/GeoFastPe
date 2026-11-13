@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { usePreferences } from '../../preferences/PreferencesContext.jsx';
 
 // Vista FloatingActionsView; conserva los IDs y el marcado que utiliza el motor original.
 const markup = `<div id="fab-container">
@@ -8,6 +9,25 @@ const markup = `<div id="fab-container">
         <button class="fab fab-emergency" id="btn-emergency" title="Emergencia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
     </div>`;
 
+const TITLES = {
+  'btn-3d': 'Vista 3D',
+  'btn-gps': 'Mi ubicación',
+  'btn-route': 'Ruta',
+  'btn-emergency': 'Emergencia'
+};
+
 export default function FloatingActionsView() {
+  const { tr } = usePreferences();
+
+  useEffect(() => {
+    Object.entries(TITLES).forEach(([id, label]) => {
+      const button = document.getElementById(id);
+      if (button) {
+        button.title = tr(label);
+        button.setAttribute('aria-label', tr(label));
+      }
+    });
+  }, [tr]);
+
   return <div className="view-slot" dangerouslySetInnerHTML={{ __html: markup }} />;
 }
